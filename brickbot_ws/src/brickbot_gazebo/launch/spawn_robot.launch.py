@@ -1,7 +1,7 @@
 """Spawn a single BrickBot into the running Gazebo world.
 
 Usage:
-    ros2 launch brickbot_gazebo spawn_robot.launch.py prefix:=robot_a_ x:=0 y:=0
+    ros2 launch brickbot_gazebo spawn_robot.launch.py name:=robot_a tool:=gripper x:=0 y:=0
 
 Can be called multiple times for robot_a, robot_b.
 """
@@ -9,11 +9,13 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, Command, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    prefix = LaunchConfiguration('prefix')
+    name = LaunchConfiguration('name')        # e.g. robot_a
+    prefix = LaunchConfiguration('prefix')    # xacro link/joint prefix, e.g. robot_a_
     tool = LaunchConfiguration('tool')
     x = LaunchConfiguration('x')
     y = LaunchConfiguration('y')
@@ -21,11 +23,14 @@ def generate_launch_description():
     xacro = PathJoinSubstitution([
         FindPackageShare('brickbot_description'), 'urdf', 'brickbot.urdf.xacro'
     ])
-    desc = Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool])
+    desc = ParameterValue(
+        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool]),
+        value_type=str,
+    )
 
     rsp = Node(
         package='robot_state_publisher', executable='robot_state_publisher',
-        namespace=prefix,
+        namespace=name,
         parameters=[{'robot_description': desc}],
         output='screen',
     )
@@ -33,14 +38,15 @@ def generate_launch_description():
     spawn = Node(
         package='ros_gz_sim', executable='create',
         arguments=[
-            '-string', desc,
-            '-name', prefix,
+            '-topic', ['/', name, '/robot_description'],
+            '-name', name,
             '-x', x, '-y', y, '-z', '0.3',
         ],
         output='screen',
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('name',   default_value='robot_a'),
         DeclareLaunchArgument('prefix', default_value='robot_a_'),
         DeclareLaunchArgument('tool',   default_value='gripper'),
         DeclareLaunchArgument('x',      default_value='0.0'),

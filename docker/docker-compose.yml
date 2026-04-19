@@ -13,6 +13,8 @@ services:
       - DISPLAY=${DISPLAY:-:0}
       - ROS_DOMAIN_ID=42
       - QT_X11_NO_MITSHM=1
+      - GZ_PARTITION=brickbot
+      - GZ_TRANSPORT_TOPIC_STATISTICS=1
     volumes:
       - ../brickbot_ws:/ws
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

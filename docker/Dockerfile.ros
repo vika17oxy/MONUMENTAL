@@ -35,6 +35,8 @@ RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed \
     ultralytics \
     opencv-python-headless
 
+ENV GZ_PARTITION=brickbot
+
 WORKDIR /ws
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
     echo "[ -f /ws/install/setup.bash ] && source /ws/install/setup.bash" >> /root/.bashrc
