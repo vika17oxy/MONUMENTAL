@@ -1,0 +1,38 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# ROS2 / colcon
+brickbot_ws/build/
+brickbot_ws/install/
+brickbot_ws/log/
+*.pyc
+__pycache__/
+*.egg-info/
+
+# Node / Vite
+node_modules/
+brickbot-hmi/dist/
+brickbot-hmi/.vite/
+*.log
+
+# Docker
+.env
+
+# Sphinx
+brickbot_docs/build/
+brickbot_docs/_build/
+
+# Perception models (binary)
+brickbot_ws/src/brickbot_perception/models/*.onnx
+brickbot_ws/src/brickbot_perception/models/*.pt
+
+# Secrets
+.env.local
+*.key
+google-tiles-api-key.txt

@@ -1,0 +1,22 @@
+services:
+  ros:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ros
+    image: brickbot/ros:jazzy
+    container_name: brickbot_ros
+    network_mode: host
+    ipc: host
+    pid: host
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - ROS_DOMAIN_ID=42
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - ../brickbot_ws:/ws
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev/dri:/dev/dri
+    stdin_open: true
+    tty: true
+    command: bash

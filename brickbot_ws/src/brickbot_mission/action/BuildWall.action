@@ -1,0 +1,16 @@
+# Goal: build a wall along a polyline of 2D ground points.
+geometry_msgs/Point[] polyline
+float32 brick_length      # default 0.24
+float32 brick_height      # default 0.071
+float32 joint_thickness   # default 0.010
+uint32 courses            # number of vertical layers
+---
+# Result
+bool success
+string message
+uint32 bricks_placed
+---
+# Feedback
+uint32 current_course
+uint32 current_brick
+string phase              # pick|transfer|cement|place

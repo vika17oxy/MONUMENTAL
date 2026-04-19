@@ -1,0 +1,34 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    tracked_base_controller:
+      type: diff_drive_controller/DiffDriveController
+
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    gripper_controller:
+      type: position_controllers/GripperActionController
+
+tracked_base_controller:
+  ros__parameters:
+    left_wheel_names:  ["left_track_joint"]
+    right_wheel_names: ["right_track_joint"]
+    wheel_separation: 0.9
+    wheel_radius: 0.2
+    publish_rate: 50.0
+    base_frame_id: base_link
+
+arm_controller:
+  ros__parameters:
+    joints: [arm_j1, arm_j2, arm_j3, arm_j4, arm_j5, arm_j6]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+gripper_controller:
+  ros__parameters:
+    joint: arm_gripper_left_finger

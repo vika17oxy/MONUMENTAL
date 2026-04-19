@@ -1,0 +1,9 @@
+string robot_namespace
+geometry_msgs/Point start
+geometry_msgs/Point end
+float32 bead_width
+---
+bool success
+string message
+---
+float32 progress

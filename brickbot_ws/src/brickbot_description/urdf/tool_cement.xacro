@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- Cement nozzle tool with one revolute for application angle. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="tool_cement" params="prefix parent">
+
+    <joint name="${prefix}cement_base_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${prefix}cement_base"/>
+      <origin xyz="0 0 0.04"/>
+    </joint>
+    <link name="${prefix}cement_base">
+      <visual><geometry><cylinder radius="0.04" length="0.08"/></geometry><origin xyz="0 0 0.04"/><material name="tool_red"><color rgba="0.7 0.1 0.1 1"/></material></visual>
+      <collision><geometry><cylinder radius="0.04" length="0.08"/></geometry><origin xyz="0 0 0.04"/></collision>
+      <inertial><mass value="0.6"/><inertia ixx="0.0005" iyy="0.0005" izz="0.0005" ixy="0" ixz="0" iyz="0"/></inertial>
+    </link>
+
+    <joint name="${prefix}cement_angle" type="revolute">
+      <parent link="${prefix}cement_base"/>
+      <child link="${prefix}nozzle"/>
+      <origin xyz="0 0 0.08"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-1.57" upper="1.57" effort="5" velocity="1.0"/>
+    </joint>
+    <link name="${prefix}nozzle">
+      <visual><geometry><cylinder radius="0.015" length="0.08"/></geometry><origin xyz="0 0 0.04"/><material name="tool_red"/></visual>
+      <collision><geometry><cylinder radius="0.015" length="0.08"/></geometry><origin xyz="0 0 0.04"/></collision>
+      <inertial><mass value="0.1"/><inertia ixx="0.0001" iyy="0.0001" izz="0.0001" ixy="0" ixz="0" iyz="0"/></inertial>
+    </link>
+
+    <joint name="${prefix}tcp_joint" type="fixed">
+      <parent link="${prefix}nozzle"/>
+      <child link="${prefix}tcp"/>
+      <origin xyz="0 0 0.08"/>
+    </joint>
+    <link name="${prefix}tcp"/>
+
+  </xacro:macro>
+</robot>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+  <BehaviorTree ID="BuildWall">
+    <Sequence>
+      <PlanWallFromPolyline polyline="{polyline}" brick_plan="{brick_plan}"/>
+      <KeepRunningUntilFailure>
+        <Sequence>
+          <PopNextBrick plan="{brick_plan}" next_pose="{target_pose}"/>
+          <SubTree ID="PickAndTransfer" robot="robot_a" target="{source_pose}"/>
+          <SubTree ID="CementAndPlace"  robot="robot_b" target="{target_pose}"/>
+          <AttachBrickToWall pose="{target_pose}"/>
+        </Sequence>
+      </KeepRunningUntilFailure>
+      <SetOutput key="success" value="true"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <BehaviorTree ID="PickAndTransfer">
+    <Sequence>
+      <DriveTo robot="{robot}" target="pallet"/>
+      <SwapTool robot="{robot}" tool="gripper"/>
+      <PickBrick robot="{robot}" pose="{target}"/>
+      <DriveTo robot="{robot}" target="handover"/>
+      <ReleaseBrick robot="{robot}"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <BehaviorTree ID="CementAndPlace">
+    <Sequence>
+      <PickBrick robot="{robot}" pose="handover"/>
+      <DriveTo robot="{robot}" target="wall"/>
+      <SwapTool robot="{robot}" tool="cement"/>
+      <ApplyCement robot="{robot}" target="{target}"/>
+      <SwapTool robot="{robot}" tool="gripper"/>
+      <PlaceBrick robot="{robot}" pose="{target}"/>
+    </Sequence>
+  </BehaviorTree>
+</root>
