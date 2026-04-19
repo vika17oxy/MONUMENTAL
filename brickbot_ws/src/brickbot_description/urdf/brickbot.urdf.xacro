@@ -8,9 +8,11 @@
 
   <xacro:arg name="prefix" default=""/>
   <xacro:arg name="tool"   default="gripper"/>
+  <xacro:arg name="ns"     default=""/>
 
   <xacro:property name="pfx" value="$(arg prefix)"/>
   <xacro:property name="tool_type" value="$(arg tool)"/>
+  <xacro:property name="ns" value="$(arg ns)"/>
 
   <xacro:include filename="$(find brickbot_description)/urdf/base_tracked.xacro"/>
   <xacro:include filename="$(find brickbot_description)/urdf/arm_6dof.xacro"/>
@@ -31,6 +33,6 @@
     <xacro:tool_cement prefix="${pfx}arm_" parent="${pfx}arm_tool0"/>
   </xacro:if>
 
-  <xacro:brickbot_ros2_control prefix="${pfx}"/>
+  <xacro:brickbot_ros2_control prefix="${pfx}" ns="${ns}"/>
 
 </robot>

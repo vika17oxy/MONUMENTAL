@@ -5,7 +5,7 @@
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:macro name="brickbot_ros2_control" params="prefix">
+  <xacro:macro name="brickbot_ros2_control" params="prefix ns">
 
     <ros2_control name="${prefix}gz_system" type="system">
       <hardware>
@@ -51,6 +51,9 @@
     <gazebo>
       <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
         <parameters>$(find brickbot_control)/config/controllers.yaml</parameters>
+        <ros>
+          <namespace>${ns}</namespace>
+        </ros>
       </plugin>
     </gazebo>
 

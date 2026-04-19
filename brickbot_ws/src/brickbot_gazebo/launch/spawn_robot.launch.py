@@ -24,7 +24,7 @@ def generate_launch_description():
         FindPackageShare('brickbot_description'), 'urdf', 'brickbot.urdf.xacro'
     ])
     desc = ParameterValue(
-        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool]),
+        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool, ' ns:=', name]),
         value_type=str,
     )
 
