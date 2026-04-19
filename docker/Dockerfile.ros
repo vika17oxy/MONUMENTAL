@@ -30,12 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     less \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --break-system-packages \
+RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed \
     mcp \
-    gz-transport13 \
     ultralytics \
-    opencv-python-headless \
-    numpy
+    opencv-python-headless
 
 WORKDIR /ws
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \

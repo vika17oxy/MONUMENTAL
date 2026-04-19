@@ -18,7 +18,7 @@ docker compose -f docker/docker-compose.yml up -d ros hmi
 
 echo "==> Building colcon workspace (first run may take a few minutes)"
 docker compose -f docker/docker-compose.yml exec -T ros bash -lc \
-  "cd /ws && colcon build --symlink-install --event-handlers console_cohesion+"
+  "cd /ws && colcon build --event-handlers console_cohesion+"
 
 echo "==> Launching Gazebo + ROS2 stack"
 docker compose -f docker/docker-compose.yml exec -T ros bash -lc \
