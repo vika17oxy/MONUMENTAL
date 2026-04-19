@@ -16,6 +16,7 @@
   <xacro:include filename="$(find brickbot_description)/urdf/arm_6dof.xacro"/>
   <xacro:include filename="$(find brickbot_description)/urdf/tool_gripper.xacro"/>
   <xacro:include filename="$(find brickbot_description)/urdf/tool_cement.xacro"/>
+  <xacro:include filename="$(find brickbot_description)/urdf/brickbot.ros2_control.xacro"/>
 
   <xacro:base_tracked prefix="${pfx}"/>
 
@@ -29,5 +30,7 @@
   <xacro:if value="${tool_type == 'cement'}">
     <xacro:tool_cement prefix="${pfx}arm_" parent="${pfx}arm_tool0"/>
   </xacro:if>
+
+  <xacro:brickbot_ros2_control prefix="${pfx}"/>
 
 </robot>

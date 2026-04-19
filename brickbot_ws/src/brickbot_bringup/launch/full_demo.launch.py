@@ -1,33 +1,33 @@
 """
 BrickBot full-stack launch.
 
-Starts:
-  - Gazebo Harmonic with construction_site world
-  - ros_gz_bridge (topics from config/bridge.yaml)
-  - robot_state_publisher for both robots (robot_a = gripper, robot_b = cement)
-  - rosbridge_server on :9090 for the web HMI
+- Starts Gazebo Harmonic with construction_site world
+- Spawns robot_a (gripper) and robot_b (cement) via ros_gz_sim create
+- Starts ros_gz_bridge
+- Loads ros2_control controllers per robot
+- Starts rosbridge_server on :9090 for the web HMI
 """
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, ExecuteProcess
+from launch.actions import IncludeLaunchDescription, ExecuteProcess, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, PathJoinSubstitution
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
-def rsp(prefix: str, tool: str, node_name: str):
-    xacro = PathJoinSubstitution([
-        FindPackageShare('brickbot_description'), 'urdf', 'brickbot.urdf.xacro'
-    ])
-    desc = {'robot_description': Command([
-        'xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool,
-    ])}
-    return Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        name=node_name,
-        namespace=prefix.rstrip('_'),
-        parameters=[desc],
+def spawn(prefix: str, tool: str, x: float, y: float):
+    return IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([FindPackageShare('brickbot_gazebo'), 'launch', 'spawn_robot.launch.py'])
+        ]),
+        launch_arguments={'prefix': prefix, 'tool': tool, 'x': str(x), 'y': str(y)}.items(),
+    )
+
+
+def load_controller(name: str, namespace: str):
+    return ExecuteProcess(
+        cmd=['ros2', 'run', 'controller_manager', 'spawner', name,
+             '--controller-manager', f'/{namespace}/controller_manager'],
         output='screen',
     )
 
@@ -38,23 +38,17 @@ def generate_launch_description():
             PathJoinSubstitution([FindPackageShare('ros_gz_sim'), 'launch', 'gz_sim.launch.py'])
         ]),
         launch_arguments={
-            'gz_args': [
-                '-r ',
-                PathJoinSubstitution([
-                    FindPackageShare('brickbot_gazebo'), 'worlds', 'construction_site.sdf'
-                ]),
-            ],
+            'gz_args': ['-r ', PathJoinSubstitution([
+                FindPackageShare('brickbot_gazebo'), 'worlds', 'construction_site.sdf'
+            ])],
         }.items(),
     )
 
     bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        parameters=[{
-            'config_file': PathJoinSubstitution([
-                FindPackageShare('brickbot_gazebo'), 'config', 'bridge.yaml'
-            ]),
-        }],
+        package='ros_gz_bridge', executable='parameter_bridge',
+        parameters=[{'config_file': PathJoinSubstitution([
+            FindPackageShare('brickbot_gazebo'), 'config', 'bridge.yaml'
+        ])}],
         output='screen',
     )
 
@@ -67,7 +61,15 @@ def generate_launch_description():
     return LaunchDescription([
         gz_sim,
         bridge,
-        rsp('robot_a_', 'gripper', 'rsp_a'),
-        rsp('robot_b_', 'cement',  'rsp_b'),
+        spawn('robot_a_', 'gripper', 0.0, -1.5),
+        spawn('robot_b_', 'cement',  0.0,  1.5),
+        TimerAction(period=5.0, actions=[
+            load_controller('joint_state_broadcaster', 'robot_a'),
+            load_controller('tracked_base_controller',  'robot_a'),
+            load_controller('arm_controller',           'robot_a'),
+            load_controller('joint_state_broadcaster', 'robot_b'),
+            load_controller('tracked_base_controller',  'robot_b'),
+            load_controller('arm_controller',           'robot_b'),
+        ]),
         rosbridge,
     ])

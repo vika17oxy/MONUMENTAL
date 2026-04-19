@@ -13,8 +13,8 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Starting ROS2 Jazzy container (host network)"
-docker compose -f docker/docker-compose.yml up -d ros
+echo "==> Starting containers (ROS + HMI, host network)"
+docker compose -f docker/docker-compose.yml up -d ros hmi
 
 echo "==> Building colcon workspace (first run may take a few minutes)"
 docker compose -f docker/docker-compose.yml exec -T ros bash -lc \
@@ -26,14 +26,6 @@ docker compose -f docker/docker-compose.yml exec -T ros bash -lc \
    ros2 launch brickbot_bringup full_demo.launch.py" &
 ROS_PID=$!
 
-echo "==> Starting HMI (Vite dev server)"
-if [ -d brickbot-hmi/node_modules ]; then
-  ( cd brickbot-hmi && pnpm dev ) &
-  HMI_PID=$!
-else
-  echo "    HMI deps not installed yet. Run: cd brickbot-hmi && pnpm install"
-fi
-
 echo ""
 echo "==> BrickBot running:"
 echo "    HMI:       http://localhost:5173"
@@ -42,5 +34,5 @@ echo "    Gazebo:    native window (from container)"
 echo ""
 echo "Press Ctrl+C to stop."
 
-trap 'echo "==> Shutting down..."; kill $ROS_PID ${HMI_PID:-} 2>/dev/null || true; docker compose -f docker/docker-compose.yml down' INT TERM
+trap 'echo "==> Shutting down..."; kill $ROS_PID 2>/dev/null || true; docker compose -f docker/docker-compose.yml down' INT TERM
 wait
