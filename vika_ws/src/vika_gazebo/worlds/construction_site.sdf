@@ -1,0 +1,104 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="construction_site">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <light type="directional" name="sun">
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <direction>-0.3 0.2 -1</direction>
+      <cast_shadows>true</cast_shadows>
+    </light>
+
+    <!-- Concrete floor -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="c"><geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry></collision>
+        <visual name="v">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+          <material><ambient>0.35 0.35 0.36 1</ambient><diffuse>0.45 0.45 0.46 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================ -->
+    <!-- EURO PALLET (1200 x 800 x 144 mm)                              -->
+    <!-- Simplified as 3 stringers + top deck. Wood-brown. Static.      -->
+    <!-- Placed 1.2m in front of robot (X+).                            -->
+    <!-- ============================================================ -->
+    <model name="euro_pallet">
+      <static>true</static>
+      <pose>1.4 0.0 0.072 0 0 0</pose>
+      <link name="pallet">
+        <visual name="deck_top">
+          <pose>0 0 0.060 0 0 0</pose>
+          <geometry><box><size>1.2 0.8 0.024</size></box></geometry>
+          <material><ambient>0.55 0.35 0.18 1</ambient><diffuse>0.65 0.42 0.22 1</diffuse></material>
+        </visual>
+        <collision name="deck_top_c">
+          <pose>0 0 0.060 0 0 0</pose>
+          <geometry><box><size>1.2 0.8 0.024</size></box></geometry>
+        </collision>
+
+        <visual name="deck_bot">
+          <pose>0 0 -0.060 0 0 0</pose>
+          <geometry><box><size>1.2 0.8 0.024</size></box></geometry>
+          <material><ambient>0.55 0.35 0.18 1</ambient><diffuse>0.65 0.42 0.22 1</diffuse></material>
+        </visual>
+
+        <visual name="stringer_l">
+          <pose>0 -0.36 0 0 0 0</pose>
+          <geometry><box><size>1.2 0.10 0.10</size></box></geometry>
+          <material><ambient>0.50 0.32 0.16 1</ambient><diffuse>0.60 0.38 0.20 1</diffuse></material>
+        </visual>
+        <visual name="stringer_m">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry><box><size>1.2 0.10 0.10</size></box></geometry>
+          <material><ambient>0.50 0.32 0.16 1</ambient><diffuse>0.60 0.38 0.20 1</diffuse></material>
+        </visual>
+        <visual name="stringer_r">
+          <pose>0 0.36 0 0 0 0</pose>
+          <geometry><box><size>1.2 0.10 0.10</size></box></geometry>
+          <material><ambient>0.50 0.32 0.16 1</ambient><diffuse>0.60 0.38 0.20 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================ -->
+    <!-- BRICKS — 6 stones, 2x3 grid on top of pallet                   -->
+    <!-- Brick size: 0.375 x 0.25 x 0.238 m (from brick.stl)            -->
+    <!-- Pallet top z = 0.144, brick base z = 0.144                      -->
+    <!-- Brick center z = 0.144 + 0.119 = 0.263                         -->
+    <!-- ============================================================ -->
+    <model name="brick_stack">
+      <static>true</static>
+      <pose>1.4 0 0.144 0 0 0</pose>
+      <link name="bricks">
+        <!-- 2 rows along X, 3 cols along Y; brick footprint 0.375 x 0.25 -->
+        <visual name="b00"><pose>-0.20 -0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+        <visual name="b01"><pose>-0.20  0.00 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+        <visual name="b02"><pose>-0.20  0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+        <visual name="b10"><pose> 0.20 -0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+        <visual name="b11"><pose> 0.20  0.00 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+        <visual name="b12"><pose> 0.20  0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- TODO: spawn vika via vika_gazebo/spawn_robot.launch.py -->
+
+  </world>
+</sdf>

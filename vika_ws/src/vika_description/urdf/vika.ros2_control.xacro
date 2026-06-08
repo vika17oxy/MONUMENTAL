@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!--
+  ros2_control block for Gazebo Harmonic (gz_ros2_control plugin).
+  Exposes: differential-drive hardware for the tracks + 6 arm joints + gripper.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="vika_ros2_control" params="prefix ns tool">
+
+    <ros2_control name="${prefix}gz_system" type="system">
+      <hardware>
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </hardware>
+
+      <!-- Base drive is handled by native gz DiffDrive plugin, not ros2_control. -->
+      <!-- Arm joints are controlled through ros2_control / MoveIt. -->
+
+
+      <!-- Arm -->
+      <xacro:macro name="arm_joint_ifc" params="name">
+        <joint name="${name}">
+          <command_interface name="position"/>
+          <state_interface name="position">
+            <param name="initial_value">0.0</param>
+          </state_interface>
+          <state_interface name="velocity"/>
+        </joint>
+      </xacro:macro>
+      <xacro:arm_joint_ifc name="${prefix}arm_j1"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j2"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j3"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j4"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j5"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j6"/>
+
+      <!-- Gripper (only left finger has a command; right mimics via URDF) -->
+      <xacro:if value="${tool == 'gripper'}">
+        <joint name="${prefix}arm_gripper_left_finger">
+          <command_interface name="position"/>
+          <state_interface name="position"/>
+          <state_interface name="velocity"/>
+        </joint>
+      </xacro:if>
+
+      <!-- Cement nozzle angle -->
+      <xacro:if value="${tool == 'cement'}">
+        <joint name="${prefix}arm_cement_angle">
+          <command_interface name="position"/>
+          <state_interface name="position"/>
+          <state_interface name="velocity"/>
+        </joint>
+      </xacro:if>
+
+    </ros2_control>
+
+    <xacro:if value="${len(ns) > 0}">
+      <gazebo>
+        <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+          <parameters>$(find vika_control)/config/controllers_${ns}.yaml</parameters>
+          <ros>
+            <namespace>${ns}</namespace>
+            <remapping>/robot_description:=/${ns}/robot_description</remapping>
+          </ros>
+        </plugin>
+      </gazebo>
+    </xacro:if>
+
+  </xacro:macro>
+
+</robot>

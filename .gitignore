@@ -2,35 +2,38 @@
 .DS_Store
 Thumbs.db
 
+# Local backups
+backup_*/
+
 # Editors
 .vscode/
 .idea/
 *.swp
 
 # ROS2 / colcon
-brickbot_ws/build/
-brickbot_ws/install/
-brickbot_ws/log/
+vika_ws/build/
+vika_ws/install/
+vika_ws/log/
 *.pyc
 __pycache__/
 *.egg-info/
 
 # Node / Vite
 node_modules/
-brickbot-hmi/dist/
-brickbot-hmi/.vite/
+vika-hmi/dist/
+vika-hmi/.vite/
 *.log
 
 # Docker
 .env
 
 # Sphinx
-brickbot_docs/build/
-brickbot_docs/_build/
+vika_docs/build/
+vika_docs/_build/
 
 # Perception models (binary)
-brickbot_ws/src/brickbot_perception/models/*.onnx
-brickbot_ws/src/brickbot_perception/models/*.pt
+vika_ws/src/vika_perception/models/*.onnx
+vika_ws/src/vika_perception/models/*.pt
 
 # Secrets
 .env.local

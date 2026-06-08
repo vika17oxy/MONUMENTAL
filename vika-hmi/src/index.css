@@ -1,0 +1,246 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────
+   MONUMENTAL — design tokens
+   Construction-site palette: deep slate base, layered surfaces for depth,
+   safety-yellow accent for primary action / branding.
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg-0:  #06080b;   /* page background — pitch */
+  --bg-1:  #1c2229;   /* primary surface */
+  --bg-2:  #242b34;   /* elevated card surface */
+  --bg-3:  #2f3741;   /* hover / active */
+  --line:  rgba(255,255,255,0.10);
+  --line-strong: rgba(255,255,255,0.22);
+  --text:  #f4f5f7;
+  --text-dim: rgba(244,245,247,0.6);
+  --text-mute: rgba(244,245,247,0.35);
+
+  /* Safety yellow — site / hazard accent */
+  --accent:       #fbbf24;   /* amber-400 */
+  --accent-soft:  #f59e0b;   /* amber-500 */
+  --accent-glow:  rgba(251,191,36,0.35);
+
+  --shadow-card:
+    0 1px 0 rgba(255,255,255,0.07) inset,
+    0 0 0 1px rgba(0,0,0,0.6),
+    0 16px 36px -14px rgba(0,0,0,0.95),
+    0 4px 10px -2px rgba(0,0,0,0.7);
+}
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  background: var(--bg-0);
+  color: var(--text);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Subtle vignette + cross-grid — reads as depth, not clutter */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.03), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.6), transparent 70%);
+  z-index: 0;
+}
+#root { position: relative; z-index: 1; }
+
+/* Tablet-friendly: scale tiny utility text up so a 10" touch screen stays legible */
+.text-\[9px\]  { font-size: 12px !important; }
+.text-\[10px\] { font-size: 13px !important; }
+.text-\[11px\] { font-size: 14px !important; }
+.text-xs       { font-size: 14px !important; line-height: 1.35 !important; }
+.text-sm       { font-size: 16px !important; line-height: 1.4  !important; }
+.text-base     { font-size: 18px !important; }
+
+/* Accent utility */
+.text-accent   { color: var(--accent) !important; }
+.bg-accent     { background: var(--accent) !important; }
+.border-accent { border-color: var(--accent) !important; }
+
+@layer components {
+  /* ── Panel: clearly elevated card with strong shadow + top highlight ── */
+  .panel {
+    position: relative;
+    background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+  }
+  /* top-edge light line — visible "lift" off the page */
+  .panel::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 1px; right: 1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, transparent);
+    pointer-events: none;
+  }
+  .panel:hover {
+    border-color: rgba(255,255,255,0.32);
+  }
+  /* Corner brackets — subtle white, just a hint of structure */
+  .panel > .corner-tl,
+  .panel > .corner-br {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    pointer-events: none;
+  }
+  .panel > .corner-tl {
+    top: -1px; left: -1px;
+    border-top: 1px solid rgba(255,255,255,0.5);
+    border-left: 1px solid rgba(255,255,255,0.5);
+  }
+  .panel > .corner-br {
+    bottom: -1px; right: -1px;
+    border-bottom: 1px solid rgba(255,255,255,0.5);
+    border-right: 1px solid rgba(255,255,255,0.5);
+  }
+
+  .panel-head {
+    @apply flex items-center justify-between px-4 py-3 text-[12px] uppercase tracking-[0.2em] text-white/70;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent);
+  }
+  .panel-body { @apply p-4; }
+
+  /* Stencil number badge — neutral, structural */
+  .stencil {
+    @apply inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-bold tracking-widest;
+    color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.03);
+  }
+
+  /* ── Buttons — layered, touch-friendly (min 48px) ── */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0.7rem 1.1rem;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    background: linear-gradient(180deg, var(--bg-3) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.05) inset,
+      0 1px 2px rgba(0,0,0,0.5);
+    transition: all 120ms ease;
+  }
+  .btn:hover {
+    border-color: rgba(255,255,255,0.35);
+    background: linear-gradient(180deg, #2a313b 0%, #1a1f26 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.08) inset,
+      0 2px 8px rgba(0,0,0,0.6);
+  }
+  .btn:active {
+    transform: translateY(1px);
+    background: var(--bg-1);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--line);
+  }
+
+  .btn-primary {
+    color: #1a1200;
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-soft) 100%);
+    border-color: var(--accent);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.3) inset,
+      0 0 0 1px rgba(251,191,36,0.4),
+      0 4px 12px -4px var(--accent-glow);
+  }
+  .btn-primary:hover {
+    color: #1a1200;
+    filter: brightness(1.08);
+    border-color: var(--accent);
+  }
+
+  .btn-danger {
+    color: #fff;
+    border-color: rgba(255,255,255,0.4);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(251,191,36,0.18) 0 10px,
+      rgba(0,0,0,0.6) 10px 20px
+    );
+  }
+  .btn-danger:hover {
+    color: #fff;
+    filter: brightness(1.25);
+    border-color: var(--accent);
+  }
+
+  /* Hazard stripes — yellow/black */
+  .hazard {
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--accent) 0 10px,
+      #000 10px 20px
+    );
+  }
+
+  /* Input */
+  .input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.65rem 0.75rem;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg-0);
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .input::placeholder { color: var(--text-mute); }
+  .input:focus {
+    outline: none;
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+  }
+
+  /* Status dot */
+  .dot { @apply inline-block h-2 w-2 rounded-full; }
+  .dot-live {
+    background: #f4f5f7;
+    box-shadow: 0 0 6px rgba(244,245,247,0.6);
+  }
+  .dot-off  { background: #525252; }
+
+  /* Readout */
+  .readout {
+    @apply font-mono tabular-nums;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .readout-dim { color: var(--text-mute); }
+}
+
+/* Tighter scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+::-webkit-scrollbar-track { background: transparent; }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Adapted from MerlinLaboratory/ABB_omnicore_ros_driver gofa_moveit_config -->
+<robot name="arm_standalone">
+  <group name="arm">
+    <joint name="arm_mount_joint"/>
+    <joint name="arm_j1"/>
+    <joint name="arm_j2"/>
+    <joint name="arm_j3"/>
+    <joint name="arm_j4"/>
+    <joint name="arm_j5"/>
+    <joint name="arm_j6"/>
+  </group>
+
+  <group_state name="home" group="arm">
+    <joint name="arm_j1" value="0"/>
+    <joint name="arm_j2" value="-1.2"/>
+    <joint name="arm_j3" value="1.2"/>
+    <joint name="arm_j4" value="0"/>
+    <joint name="arm_j5" value="0.6"/>
+    <joint name="arm_j6" value="0"/>
+  </group_state>
+
+  <group_state name="zero" group="arm">
+    <joint name="arm_j1" value="0"/>
+    <joint name="arm_j2" value="0"/>
+    <joint name="arm_j3" value="0"/>
+    <joint name="arm_j4" value="0"/>
+    <joint name="arm_j5" value="0"/>
+    <joint name="arm_j6" value="0"/>
+  </group_state>
+
+  <disable_collisions link1="arm_base_link" link2="arm_link1" reason="Adjacent"/>
+  <disable_collisions link1="arm_base_link" link2="arm_link2" reason="Never"/>
+  <disable_collisions link1="arm_link1"     link2="arm_link2" reason="Adjacent"/>
+  <disable_collisions link1="arm_link1"     link2="arm_link3" reason="Never"/>
+  <disable_collisions link1="arm_link2"     link2="arm_link3" reason="Adjacent"/>
+  <disable_collisions link1="arm_link2"     link2="arm_link4" reason="Never"/>
+  <disable_collisions link1="arm_link3"     link2="arm_link4" reason="Adjacent"/>
+  <disable_collisions link1="arm_link3"     link2="arm_link5" reason="Never"/>
+  <disable_collisions link1="arm_link3"     link2="arm_tool0" reason="Never"/>
+  <disable_collisions link1="arm_link4"     link2="arm_link5" reason="Adjacent"/>
+  <disable_collisions link1="arm_link4"     link2="arm_tool0" reason="Never"/>
+  <disable_collisions link1="arm_link5"     link2="arm_tool0" reason="Adjacent"/>
+</robot>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BrickBot — single-entry launch script (Angabe Section 3, line 88)
+# VIKA — single-entry launch script (Angabe Section 3, line 88)
 #
 # Architecture (Option C: hybrid native + Docker):
 #   - Gazebo Harmonic  : native WSL2 (GPU via WSLg)
@@ -8,7 +8,7 @@
 #   - Docker container : higher-level nodes (rosbridge, MCP, perception)
 #                        connects via DDS on ROS_DOMAIN_ID=42 (network_mode: host)
 #   - HMI Docker       : Vite dev server on :5173
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -29,27 +29,27 @@ if [ ! -f /opt/ros/jazzy/setup.bash ]; then
 fi
 source /opt/ros/jazzy/setup.bash
 
-if [ ! -f "$SCRIPT_DIR/brickbot_ws/install/setup.bash" ]; then
+if [ ! -f "$SCRIPT_DIR/vika_ws/install/setup.bash" ]; then
   echo "==> First-time colcon build"
-  ( cd brickbot_ws && colcon build --event-handlers console_cohesion+ )
+  ( cd vika_ws && colcon build --event-handlers console_cohesion+ )
 fi
-source "$SCRIPT_DIR/brickbot_ws/install/setup.bash"
+source "$SCRIPT_DIR/vika_ws/install/setup.bash"
 
 echo "==> Starting HMI container"
 docker compose -f docker/docker-compose.yml up -d hmi
 
 echo "==> Launching Gazebo Harmonic (native, GPU)"
-WORLD="$SCRIPT_DIR/brickbot_ws/src/brickbot_gazebo/worlds/construction_site.sdf"
+WORLD="$SCRIPT_DIR/vika_ws/src/vika_gazebo/worlds/construction_site.sdf"
 gz sim -r "$WORLD" &
 GZ_PID=$!
 sleep 4
 
 echo "==> Launching ROS2 stack (spawn + bridge + controllers + rosbridge)"
-ros2 launch brickbot_bringup full_demo.launch.py &
+ros2 launch vika_bringup full_demo.launch.py &
 ROS_PID=$!
 
 echo ""
-echo "==> BrickBot running:"
+echo "==> VIKA running:"
 echo "    HMI:       http://localhost:5173"
 echo "    rosbridge: ws://localhost:9090"
 echo "    Gazebo:    native window"

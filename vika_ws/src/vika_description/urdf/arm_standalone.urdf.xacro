@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<!--
+  Standalone 6-DOF industrial arm fixed to the world frame.
+  Used for the interim presentation: just the arm in Gazebo + RViz + MoveIt.
+  STL drop-in: place files at vika_description/meshes/arm/<linkname>.stl
+  and pass the corresponding mesh_<linkname>:= xacro arg from the launch file.
+-->
+<robot name="arm_standalone" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="mesh_base_link" default=""/>
+  <xacro:arg name="mesh_link1"     default=""/>
+  <xacro:arg name="mesh_link2"     default=""/>
+  <xacro:arg name="mesh_link3"     default=""/>
+  <xacro:arg name="mesh_link4"     default=""/>
+  <xacro:arg name="mesh_link5"     default=""/>
+  <xacro:arg name="mesh_tool0"     default=""/>
+
+  <xacro:include filename="$(find vika_description)/urdf/arm_6dof.xacro"/>
+  <xacro:include filename="$(find vika_description)/urdf/vika.ros2_control.xacro"/>
+
+  <link name="world"/>
+
+  <xacro:arm_6dof prefix="arm_" parent="world"
+                  mesh_base_link="$(arg mesh_base_link)"
+                  mesh_link1="$(arg mesh_link1)"
+                  mesh_link2="$(arg mesh_link2)"
+                  mesh_link3="$(arg mesh_link3)"
+                  mesh_link4="$(arg mesh_link4)"
+                  mesh_link5="$(arg mesh_link5)"
+                  mesh_tool0="$(arg mesh_tool0)">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:arm_6dof>
+
+  <!--
+    ros2_control hardware interfaces (joints arm_j1..arm_j6).
+    The vika_ros2_control macro only emits the gz plugin when a namespace
+    is set, so we attach our own un-namespaced gz_ros2_control plugin below.
+  -->
+  <xacro:vika_ros2_control prefix="" ns="" tool="none"/>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find vika_control)/config/controllers_arm.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>

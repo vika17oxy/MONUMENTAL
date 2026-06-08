@@ -1,10 +1,19 @@
-# BrickBot — Vollständiger Projektplan (FHTW MRE2 SS2026)
+# VIKA — Vollständiger Projektplan (FHTW MRE2 SS2026)
+
+**Team:** Elias Bitsch · Viktoriia Ovdiienko
+**LV:** MRE2 Robotermodellierung, SS2026 (FHTW)
+**Repo-Struktur (Doku):** `angabe.md` (Aufgabenstellung) · `plan.md` (dieses Dokument, Source of Truth) · `HANDOFF.md` (Session-Übergabe / aktueller Stand)
 
 ## 1. Context
 
-Greenfield Lehrveranstaltungs-Projekt **MRE2 Robotermodellierung, SS2026**. Zwei Studierende (Gruppe) konstruieren **zwei identische mobile Brick-Laying-Roboter** (Knickarm 6-DOF auf Kettenfahrwerk), die in einem industriellen Mauerbau-Szenario kooperieren. Abgabe = kompilierendes ROS2-Paket + PDF-Doku + Live-Demo.
+Greenfield Lehrveranstaltungs-Projekt **MRE2 Robotermodellierung, SS2026**. Zwei Studierende (Gruppe) konstruieren **zwei kooperierende mobile Brick-Laying-Roboter** auf gemeinsamem Kettenfahrwerk, aber mit **bewusst unterschiedlicher Arm-Kinematik pro Person** (siehe Angabe Z.56). Abgabe = kompilierendes ROS2-Paket + PDF-Doku + Live-Demo.
 
-**⚠ Hinweis zur Angabe Z.56** ("unterschiedliche Kinematik pro Person"): Bewusste Entscheidung der Gruppe, einen gemeinsamen Bot-Typ zu bauen — Aufwandsersparnis, klarere Kooperation, beide Studierende lernen die gleiche Pipeline. **Muss mit Lehrkraft früh abgestimmt werden.** Falls nicht akzeptiert: Arbeitsteilung ergänzen (z.B. Person A baut Arm + MoveIt, Person B baut Base + Tools — beide sind dann "Autor" eines Teilsystems) oder eine der beiden Kinematiken umschwenken auf SCARA+Z-Spindel.
+**Arbeits- und Kinematik-Aufteilung (erfüllt Angabe Z.56):**
+- **Elias** → **6-Achs-Knickarm (RRR-RRR, anthropomorph)** mit Parallelbackengreifer. Rolle: **Pick & Place** — greift Ziegel von der Palette und setzt sie präzise (6-DOF-IK, beliebige Anstellwinkel).
+- **Viktoriia** → **5-Achs-Arm mit Zementdüse** als Endeffektor. Rolle: **Linien-Applikation** — fährt die Wand-Oberkante als Linie ab und legt den Zement-Bead (kartesischer Linienzug, 5-DOF reicht, da Rotation um die Düsenachse irrelevant ist).
+- Beide teilen sich **alle übrigen Tasks** (Base, Welt, HMI, Mission-BT, Sensorik, Docs) — die individuelle Note liegt in der jeweils selbst konstruierten Kinematik + Werkzeugfunktion.
+
+> Damit ist der frühere Z.56-Konflikt ("identische Bots") aufgelöst: zwei nachweislich verschiedene serielle Kinematiken (6-DOF vs. 5-DOF), jede einem Autor zugeordnet, jede mit eigener realer Werkzeugfunktion (Greifen vs. Extrudieren).
 
 **Ziel:** Sehr gut (>=88%) durch Erfüllung **aller** Minimal- **und** Nice-to-Have-Anforderungen plus Bonus (LLM-gesteuerter Roboter, CNN-Kameraauswertung, Teleop, Werkzeugwechsler, Förderband, Schutzzaun, Sensor-Suite).
 
@@ -30,7 +39,7 @@ Greenfield Lehrveranstaltungs-Projekt **MRE2 Robotermodellierung, SS2026**. Zwei
 | 1.3 | 3–7 DOF | 6-DOF (mobile Base nicht Teil der Kette) | Must ✓ |
 | 1.4 | Verschiedene Formen | Knickarm (Anthropomorph) | Must ✓ |
 | 1.5 | Selbsterstellte Endeffektoren | Parallelbackengreifer + Zementdüse + ISO-Tool-Changer | Must ✓ |
-| 1.6 | Kreativ, unterschiedliche Kinematik je Person | **⚠ Klärungsbedarf** — beide Studierende bauen identischen Bot-Typ; muss mit Lehrkraft abgestimmt werden, sonst Fallback auf differenzierte Rollen (siehe Context) | Must ⚠ |
+| 1.6 | Kreativ, unterschiedliche Kinematik je Person | **Elias: 6-Achs-Knickarm (Pick&Place)** · **Viktoriia: 5-Achs-Arm mit Düse (Linien-Applikation)** — zwei verschiedene serielle Kinematiken, je Autor zugeordnet | Must ✓ |
 | 1.7 | Realitätsnahe Auslegung | Gewichte, Inertia aus CAD, Motor-Torque-Limits im URDF, Joint-Limits aus Datenblatt-Referenzen | Must ✓ |
 | 1.8 | Hoher Detailgrad | Sichtbare Getriebe-Dummies, Kabelführung (Visual-Mesh), Schraubendetails | Nice ✓ |
 | 1.9 | Reale Werkzeugfunktion | Greifer-Backen mit `mimic`-Joint + F/T-Sensor, Zementdüse mit Particle-Emitter | Nice ✓ |
@@ -42,7 +51,7 @@ Greenfield Lehrveranstaltungs-Projekt **MRE2 Robotermodellierung, SS2026**. Zwei
 | 2.6 | KI-Anwendung | **LLM (Claude via MCP) plant Missionen** + **CNN (YOLOv8) erkennt Brick-Posen** | Nice ✓✓ |
 | 3.1 | Sim-Umgebung mit beiden Robotern | Gazebo Harmonic, beide Bots gleichzeitig | Must ✓ |
 | 3.2 | HMI bewegt TCP linear (IK) | MoveIt2-Servo Cartesian-Jog via HMI-Buttons + Gamepad | Must ✓ |
-| 3.3 | Start-Skript | `./start.sh` → `docker compose up` + `ros2 launch brickbot_bringup full_demo.launch.py` | Must ✓ |
+| 3.3 | Start-Skript | `./start.sh` → `docker compose up` + `ros2 launch vika_bringup full_demo.launch.py` | Must ✓ |
 | 3.4 | GUI-HMI | Vite+React+shadcn+three.js = Web-GUI (übererfüllt Tkinter/QT-Level) | Nice ✓✓ |
 | 4.1 | Dokumentation PDF | Sphinx → LaTeX → PDF, CI-generiert | Must ✓ |
 | 4.2 | Methodische Code-Doku | Docstrings + Sphinx `autodoc` für Python, Doxygen für C++ | Nice ✓ |
@@ -101,19 +110,19 @@ Greenfield Lehrveranstaltungs-Projekt **MRE2 Robotermodellierung, SS2026**. Zwei
 ### 4.2 Colcon Workspace Layout
 
 ```
-brickbot_ws/src/
-├── brickbot_description/        # URDF/xacro, meshes, materials
+vika_ws/src/
+├── vika_description/        # URDF/xacro, meshes, materials
 │   ├── urdf/
 │   │   ├── base_tracked.xacro
 │   │   ├── arm_6dof.xacro                # Knickarm RRR-RRR
 │   │   ├── tool_gripper.xacro
 │   │   ├── tool_cement.xacro
 │   │   ├── tool_changer.xacro
-│   │   └── brickbot.urdf.xacro           # Komposition (mit ${prefix}-Arg für Namespace)
+│   │   └── vika.urdf.xacro           # Komposition (mit ${prefix}-Arg für Namespace)
 │   ├── meshes/                          # STL/DAE aus Fusion360/FreeCAD
 │   └── rviz/view_robot.rviz
 │
-├── brickbot_gazebo/             # Welten + Plugin-Config
+├── vika_gazebo/             # Welten + Plugin-Config
 │   ├── worlds/construction_site.sdf
 │   ├── models/brick/
 │   ├── models/europallet/
@@ -123,45 +132,45 @@ brickbot_ws/src/
 │   ├── config/bridge_config.yaml
 │   └── launch/spawn_world.launch.py
 │
-├── brickbot_moveit/             # MoveIt2 config (6DOF, zweimal instanziiert mit Namespaces robot_a/robot_b)
+├── vika_moveit/             # MoveIt2 config (6DOF, zweimal instanziiert mit Namespaces robot_a/robot_b)
 │
-├── brickbot_control/
+├── vika_control/
 │   ├── config/controllers.yaml
 │   └── launch/controllers.launch.py
 │
-├── brickbot_mission/            # Mission BT + actions
+├── vika_mission/            # Mission BT + actions
 │   ├── bt_trees/build_wall.xml
 │   ├── src/bt_nodes/*.cpp
 │   └── action/PickBrick.action, PlaceBrick.action, ApplyCement.action
 │
-├── brickbot_perception/         # YOLOv8 brick detector
-│   ├── brickbot_perception/cnn_brick_detector.py
+├── vika_perception/         # YOLOv8 brick detector
+│   ├── vika_perception/cnn_brick_detector.py
 │   ├── models/brick_yolov8n.onnx
 │   └── launch/perception.launch.py
 │
-├── brickbot_teleop/             # Joy + HMI teleop bridge
+├── vika_teleop/             # Joy + HMI teleop bridge
 │   └── launch/teleop.launch.py
 │
-├── brickbot_hmi_bridge/         # rosbridge + custom services
+├── vika_hmi_bridge/         # rosbridge + custom services
 │   ├── src/tcp_linear_jog_service.py
 │   └── launch/hmi.launch.py
 │
-├── brickbot_mcp/                # MCP server for LLM world-prompting
-│   ├── brickbot_mcp/server.py
-│   ├── brickbot_mcp/tools/{spawn,pose,sensor,simctl,mission}.py
+├── vika_mcp/                # MCP server for LLM world-prompting
+│   ├── vika_mcp/server.py
+│   ├── vika_mcp/tools/{spawn,pose,sensor,simctl,mission}.py
 │   └── pyproject.toml
 │
-├── brickbot_bringup/
+├── vika_bringup/
 │   ├── launch/full_demo.launch.py       # single-entry, startet alles
 │   ├── launch/single_robot.launch.py
 │   └── config/sim_params.yaml
 │
-└── brickbot_docs/               # Sphinx source
+└── vika_docs/               # Sphinx source
     ├── conf.py
     ├── index.rst
     └── pdf-build.sh → LaTeX → PDF
 
-brickbot-hmi/                    # SEPARATES Repo, Vite Web-App
+vika-hmi/                    # SEPARATES Repo, Vite Web-App
 ├── src/
 │   ├── scene/UrdfTwin.tsx       # three.js + urdf-loader live joint_states
 │   ├── scene/BrickWorld.tsx     # Digital Twin der Welt
@@ -199,10 +208,11 @@ README.md                        # Setup-Doku (Pflicht Z.94)
 - **Sensoren:** 2D-Lidar vorn (Sick-TiM-Style, 270°), IMU mittig, Stoßfänger-Kontakt
 - **Visual:** graue Stahlstruktur mit gelbem Warnstreifen, Warnleuchte oben
 
-### 5.2 Arm — 6-DOF Knickarm (für beide Bots identisch)
+### 5.2 Elias' Arm — 6-DOF Knickarm (Pick & Place)
+- **Autor:** Elias Bitsch
 - **Kinematik:** klassisch RRR-RRR (Shoulder + Elbow + 3-DOF Spherical Wrist)
 - **Reichweite:** 1.4 m
-- **Traglast:** 7 kg (Brick ~3 kg + Tool-Changer + Greifer/Düse mit Reserve)
+- **Traglast:** 7 kg (Brick ~3 kg + Tool-Changer + Greifer mit Reserve)
 - **Joints (Limits/Torques realitätsnah, angelehnt an KUKA-KR6-Klasse — Größen als Referenz, Geometrie selbst):**
   - J1 (Base): ±185°, 80 Nm
   - J2 (Shoulder): -155..+35°, 80 Nm
@@ -211,7 +221,22 @@ README.md                        # Setup-Doku (Pflicht Z.94)
   - J5 (Wrist Pitch): ±130°, 20 Nm
   - J6 (Tool Rot): ±350°, 15 Nm
 - **Detailgrad (Z.59):** sichtbare Harmonic-Drive-Dummies an J2/J3, externer Kabelkanal-Mesh entlang Oberarm
-- **Universeller Arm:** Pick (top-down), Cement-Bead (beliebige Orientierung), Place (schräg möglich)
+- **Rolle:** Pick (top-down von Palette), Übergabe, Place (schräg möglich dank voller 6-DOF-Orientierung)
+- **Endeffektor:** Parallelbackengreifer (siehe 5.4)
+
+### 5.3 Viktoriias Arm — 5-DOF mit Zementdüse (Linien-Applikation)
+- **Autor:** Viktoriia Ovdiienko
+- **Kinematik:** 5-DOF seriell (RRR-Schulter/Ellbogen + 2-DOF-Handgelenk) — **bewusst eine Achse weniger**: für das Abfahren einer Zement-Linie ist die Rotation um die Düsen-Längsachse (J6) funktionslos und entfällt. Saubere, eigenständige Kinematik (nicht Elias' Arm minus eine Achse — eigene Geometrie/Maße).
+- **Reichweite:** 1.5 m (etwas länger, um über die Wand-Oberkante zu reichen)
+- **Traglast:** 5 kg (Düse + Tool-Changer + Zement-Reserve)
+- **Joints:**
+  - J1 (Base): ±185°, 80 Nm
+  - J2 (Shoulder): -150..+40°, 80 Nm
+  - J3 (Elbow): -125..+150°, 55 Nm
+  - J4 (Wrist Pitch): ±130°, 20 Nm
+  - J5 (Wrist Yaw / Düsen-Anstellwinkel): ±180°, 15 Nm
+- **Rolle:** fährt die aktuelle Wand-Oberkante als kartesischen **Linienzug** ab (MoveIt2 Cartesian-Path) und extrudiert dabei den Zement-Bead. 5-DOF reicht, weil die Düse rotationssymmetrisch ist.
+- **Endeffektor:** Zementdüse (siehe 5.4)
 
 ### 5.4 Tool-Changer + Endeffektoren
 - **ISO-Style Kupplung** (Schrenk-Style): pneumatischer Snap via `fixed_joint` spawn/despawn zur Laufzeit
@@ -270,7 +295,7 @@ Quellen: [Gazebo Fuel](https://app.gazebosim.org/fuel/models), [3DGEMS 270+ Mode
 ## 8. KI-Integration (Bonus, angabe.md Z.74)
 
 ### 8.1 LLM steuert Roboter (via MCP)
-- Python MCP-Server (`brickbot_mcp/server.py`) exponiert Tools:
+- Python MCP-Server (`vika_mcp/server.py`) exponiert Tools:
   - `spawn_model(uri, pose)` / `delete_model(name)` / `list_models()`
   - `set_model_pose(name, pose)` / `attach_link(parent, child)`
   - `get_sensor(topic, timeout)` mit Server-seitigem Filter (95% Token-Ersparnis)
@@ -294,13 +319,13 @@ Quellen: [Gazebo Fuel](https://app.gazebosim.org/fuel/models), [3DGEMS 270+ Mode
 set -e
 xhost +local:docker          # für Gazebo GUI aus Docker (optional — Gazebo läuft nativ)
 docker compose -f docker/docker-compose.yml up -d ros_jazzy perception
-wsl.exe -d Ubuntu -- bash -c "gz sim -r brickbot_gazebo/worlds/construction_site.sdf" &
+wsl.exe -d Ubuntu -- bash -c "gz sim -r vika_gazebo/worlds/construction_site.sdf" &
 sleep 5
 docker compose exec ros_jazzy bash -c \
   "source /opt/ros/jazzy/setup.bash && source install/setup.bash && \
-   ros2 launch brickbot_bringup full_demo.launch.py"
+   ros2 launch vika_bringup full_demo.launch.py"
 # HMI separat:
-( cd brickbot-hmi && pnpm dev ) &
+( cd vika-hmi && pnpm dev ) &
 ```
 
 ---
@@ -308,7 +333,7 @@ docker compose exec ros_jazzy bash -c \
 ## 10. Dokumentation (angabe.md Z.91-101)
 
 - **Sphinx** Workspace mit `sphinx-rtd-theme` → build-pipeline:
-  - `autodoc` für Python (brickbot_mcp, brickbot_perception)
+  - `autodoc` für Python (vika_mcp, vika_perception)
   - `breathe + doxygen` für C++ (BT-Nodes)
   - Kapitel: Einleitung / Industrielles Szenario / Roboterkonstruktion / Simulation / HMI / KI-Module / Installation / Launch-Anleitung / API-Ref
   - **PDF via LaTeX** (`make latexpdf`) — Pflicht Z.97
@@ -321,26 +346,31 @@ docker compose exec ros_jazzy bash -c \
 
 ## 11. Phasen-Roadmap (für spätere Execution)
 
+Owner-Legende: **Elias** (6-Achs-Arm + Pick&Place) · **Viktoriia** (5-Achs-Arm + Düse/Linie) · **Beide** (geteilte Infrastruktur).
+
 | # | Phase | Deliverable | Owner |
 |---|---|---|---|
 | 1 | Bootstrap | WSL2 + Docker-Images + colcon ws + Vite skeleton | Beide |
 | 2 | Base URDF | Tracked Base fährt in Gazebo via `ros2 topic pub /cmd_vel` | Beide |
-| 3 | Arm 6-DOF URDF | xacro + MoveIt2 config + IK in RViz | Studi A |
-| 4 | Tools + Changer | Greifer + Zementdüse + Tool-Swap-Service | Studi B |
-| 5 | World Assets | Palette + 20 Bricks + Fence + Förderband + Warnlicht | Studi B |
-| 6 | HMI MVP | Vite + shadcn + rosbridge + URDF-Twin + `/joint_states` live | Studi A |
-| 7 | HMI TCP-Jog | Servo Cartesian via Buttons → IK bewegt TCP linear (Pflicht!) | Studi A |
-| 8 | Pick/Place One-Shot | Ein Bot pickt einen Brick, platziert auf Wand | Beide |
-| 9 | Mission BT | build_wall.xml — komplette Sequence | Beide |
-| 10 | Multi-Robot | Beide Bots in einer Welt (Namespaces), Übergabe funktioniert | Beide |
-| 12 | Cement FX | Particle-Emitter + Wand-Attachment | Studi B |
-| 13 | Teleop | Joy-Node + HMI-Joystick | Studi A |
-| 14 | MCP-Server | Python Tools + Claude spawn-test | Studi B |
-| 15 | CNN Perception | YOLOv8 Training + Inference-Node + HMI-Overlay | Studi A |
+| 3a | Arm 6-DOF URDF | xacro + MoveIt2 config + IK in RViz (Pick&Place-Arm) | **Elias** |
+| 3b | Arm 5-DOF URDF | xacro + MoveIt2 config + Cartesian-Path in RViz (Düsen-Arm) | **Viktoriia** |
+| 4a | Greifer + Changer | Parallelbackengreifer + Tool-Swap-Service | **Elias** |
+| 4b | Zementdüse + Changer | Düsenkopf + `/tool/cement/extrude`-Service | **Viktoriia** |
+| 5 | World Assets | Palette + 20 Bricks + Fence + Förderband + Warnlicht | Beide |
+| 6 | HMI MVP | Vite + shadcn + rosbridge + URDF-Twin + `/joint_states` live | Beide |
+| 7 | HMI TCP-Jog | Servo Cartesian via Buttons → IK bewegt TCP linear (Pflicht!) | Beide |
+| 8 | Pick/Place One-Shot | Elias-Arm pickt einen Brick, platziert auf Wand | **Elias** |
+| 9 | Cement-Line One-Shot | Viktoriia-Arm fährt Linie + extrudiert Zement-Bead | **Viktoriia** |
+| 10 | Mission BT | build_wall.xml — komplette kooperative Sequence | Beide |
+| 11 | Multi-Robot | Beide Bots in einer Welt (Namespaces), Übergabe funktioniert | Beide |
+| 12 | Cement FX | Particle-Emitter + Wand-Attachment | **Viktoriia** |
+| 13 | Teleop | Joy-Node + HMI-Joystick | **Elias** |
+| 14 | MCP-Server | Python Tools + Claude spawn-test | **Viktoriia** |
+| 15 | CNN Perception | YOLOv8 Training + Inference-Node + HMI-Overlay | **Elias** |
 | 16 | Sensor Suite | RGBD + Lidar + F/T + IMU + Kontakt verdrahtet | Beide |
-| 17 | Polish & Docs | Sphinx → PDF, Renderbilder, README, Backup-Video | Beide |
+| 17 | Polish & Docs | Sphinx → PDF, Renderbilder, Doku, Backup-Video | Beide |
 | 18 | Dry-Run Präsentation | End-to-End Demo funktioniert reproduzierbar | Beide |
-| 19 | **Google 3D Tiles Ground** | HMI-Scene lädt Photorealistic 3D Tiles via `3d-tiles-renderer`, Baustelle georeferenziert | Studi A |
+| 19 | **Google 3D Tiles Ground** | HMI-Scene lädt Photorealistic 3D Tiles via `3d-tiles-renderer`, Baustelle georeferenziert | **Elias** |
 | 20 | **iPad Wall-Drawing** | Touch-Polyline auf Grid-Overlay → Sample zu Brick-Positionen → Action `/mission/build_custom_wall` → BT baut maßgeschneiderte Mauer | Beide |
 
 ---
@@ -349,21 +379,21 @@ docker compose exec ros_jazzy bash -c \
 
 | Pfad | Zweck |
 |---|---|
-| `brickbot_ws/src/brickbot_description/urdf/brickbot.urdf.xacro` | Komposition (Namespace via `${prefix}` arg für robot_a / robot_b) |
-| `brickbot_ws/src/brickbot_description/urdf/arm_6dof.xacro` | 6-DOF Knickarm |
-| `brickbot_ws/src/brickbot_gazebo/worlds/construction_site.sdf` | Welt |
-| `brickbot_ws/src/brickbot_mission/bt_trees/build_wall.xml` | BehaviorTree |
-| `brickbot_ws/src/brickbot_mcp/brickbot_mcp/server.py` | MCP-Server |
-| `brickbot_ws/src/brickbot_perception/brickbot_perception/cnn_brick_detector.py` | YOLOv8 Node |
-| `brickbot_ws/src/brickbot_bringup/launch/full_demo.launch.py` | Top-level launch |
-| `brickbot-hmi/src/panels/TcpJogPanel.tsx` | **Pflicht-Feature** TCP-Linear-Jog |
-| `brickbot-hmi/src/scene/UrdfTwin.tsx` | Digital Twin |
-| `brickbot-hmi/src/scene/GoogleTilesGround.tsx` | Photorealistic 3D Tiles Layer |
-| `brickbot-hmi/src/panels/WallDrawPanel.tsx` | Touch-Polyline → Wall-Plan (iPad-Killer-Feature) |
-| `brickbot_ws/src/brickbot_mission/src/wall_sampler.py` | Polyline→Brick-Positions-Sampler + Action-Server |
+| `vika_ws/src/vika_description/urdf/vika.urdf.xacro` | Komposition (Namespace via `${prefix}` arg für robot_a / robot_b) |
+| `vika_ws/src/vika_description/urdf/arm_6dof.xacro` | 6-DOF Knickarm |
+| `vika_ws/src/vika_gazebo/worlds/construction_site.sdf` | Welt |
+| `vika_ws/src/vika_mission/bt_trees/build_wall.xml` | BehaviorTree |
+| `vika_ws/src/vika_mcp/vika_mcp/server.py` | MCP-Server |
+| `vika_ws/src/vika_perception/vika_perception/cnn_brick_detector.py` | YOLOv8 Node |
+| `vika_ws/src/vika_bringup/launch/full_demo.launch.py` | Top-level launch |
+| `vika-hmi/src/panels/TcpJogPanel.tsx` | **Pflicht-Feature** TCP-Linear-Jog |
+| `vika-hmi/src/scene/UrdfTwin.tsx` | Digital Twin |
+| `vika-hmi/src/scene/GoogleTilesGround.tsx` | Photorealistic 3D Tiles Layer |
+| `vika-hmi/src/panels/WallDrawPanel.tsx` | Touch-Polyline → Wall-Plan (iPad-Killer-Feature) |
+| `vika_ws/src/vika_mission/src/wall_sampler.py` | Polyline→Brick-Positions-Sampler + Action-Server |
 | `docker/docker-compose.yml` | Reproduzierbare Runtime |
 | `start.sh` | Single-Skript-Launch (Pflicht) |
-| `brickbot_docs/conf.py` | Sphinx PDF-Build |
+| `vika_docs/conf.py` | Sphinx PDF-Build |
 | `README.md` | Installations-/Launch-Doku |
 
 ---
@@ -414,3 +444,72 @@ docker compose exec ros_jazzy bash -c \
 - [MoveIt2 Servo Cartesian Jog](https://moveit.picknik.ai/main/doc/examples/realtime_servo/realtime_servo_tutorial.html)
 - [Google Photorealistic 3D Tiles API](https://developers.google.com/maps/documentation/tile/3d-tiles-overview)
 - [3d-tiles-renderer (NASA-AMMOS, three.js)](https://github.com/NASA-AMMOS/3DTilesRendererJS)
+
+---
+
+## 16. Installation & Quickstart
+
+**Voraussetzungen:**
+- Windows 11 mit **WSL2 Ubuntu 24.04**
+- **Docker Desktop** (oder Docker Engine in WSL2)
+- **Node 22+** und **pnpm 10+** auf Windows (für HMI-Dev-Server)
+- **Gazebo Harmonic** nativ in WSL2:
+  ```bash
+  # in WSL2
+  sudo apt update && sudo apt install -y gz-harmonic
+  ```
+
+**Erstmaliges Setup:**
+```bash
+# 1. ROS-Image bauen
+docker compose -f docker/docker-compose.yml build
+
+# 2. HMI-Deps installieren (auf Windows)
+cd vika-hmi && pnpm install && cd ..
+```
+
+**Starten:**
+```bash
+./start.sh
+```
+Öffnet:
+- HMI: http://localhost:5173
+- rosbridge: ws://localhost:9090
+- natives Gazebo-Fenster
+
+**Repo-Layout:**
+```
+vika_ws/        colcon workspace (ROS 2 Pakete)
+vika-hmi/       Vite Web-HMI
+vika_docs/      Sphinx-Dokumentation
+docker/         Docker-Image + compose
+start.sh        Single-Entry Launch-Skript
+angabe.md       Aufgabenstellung (Course brief)
+plan.md         Projektplan (Source of Truth)
+HANDOFF.md      Session-Übergabe / aktueller Stand
+```
+
+---
+
+## 17. Mesh Drop-in Konvention (Arm-Meshes)
+
+Im Ordner `vika_ws/src/vika_description/meshes/arm/` liegen STL/DAE-Dateien mit **exakt diesen Dateinamen**. Das Launch-File erkennt jede automatisch und ersetzt das jeweilige Primitiv; was nicht abgelegt ist, bleibt Box/Zylinder.
+
+| Dateiname        | Ersetzt (Link)   | Primitiv-Fallback              |
+|------------------|------------------|--------------------------------|
+| `base_link.stl`  | `arm_base_link`  | cylinder r=0.12, h=0.15        |
+| `link1.stl`      | `arm_link1`      | box 0.18 × 0.18 × 0.25         |
+| `link2.stl`      | `arm_link2`      | box 0.12 × 0.14 × 0.55         |
+| `link3.stl`      | `arm_link3`      | box 0.10 × 0.12 × 0.45         |
+| `link4.stl`      | `arm_link4`      | cylinder r=0.05, h=0.12        |
+| `link5.stl`      | `arm_link5`      | box 0.08 × 0.08 × 0.08         |
+| `tool0.stl`      | `arm_tool0`      | cylinder r=0.035, h=0.04       |
+
+**Authoring-Regeln:** Mesh-Origin (0,0,0) = URDF-Link-Frame (Joint am Parent-Ende), Z nach oben, Meter. Das im xacro hinterlegte `<origin>`-Offset wird zusätzlich angewandt — entweder Mesh verschoben re-modellieren oder den per-Link-`<origin>`-Block in `arm_6dof.xacro` anpassen. STLs in mm → in Meter re-exportieren oder am `<mesh>`-Element skalieren. Dieselbe Datei dient als Collision; für High-Poly-Visuals separate vereinfachte Collision-STL erwägen.
+
+**Drop-in verifizieren:**
+```bash
+cp my_link2.stl meshes/arm/link2.stl
+colcon build --packages-select vika_description
+ros2 launch vika_bringup arm_demo.launch.py
+```

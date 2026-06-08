@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!--
+  Standalone 6-DOF arm for RViz + MoveIt without Gazebo.
+  Uses ros2_control mock_components/GenericSystem so MoveIt's
+  JointTrajectoryController has something to talk to.
+-->
+<robot name="arm_standalone" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find vika_description)/urdf/arm_6dof.xacro"/>
+
+  <link name="world"/>
+
+  <xacro:arm_6dof prefix="arm_" parent="world">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:arm_6dof>
+
+  <ros2_control name="arm_mock_system" type="system">
+    <hardware>
+      <plugin>mock_components/GenericSystem</plugin>
+    </hardware>
+    <xacro:macro name="arm_joint_ifc" params="name">
+      <joint name="${name}">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+    </xacro:macro>
+    <xacro:arm_joint_ifc name="arm_j1"/>
+    <xacro:arm_joint_ifc name="arm_j2"/>
+    <xacro:arm_joint_ifc name="arm_j3"/>
+    <xacro:arm_joint_ifc name="arm_j4"/>
+    <xacro:arm_joint_ifc name="arm_j5"/>
+    <xacro:arm_joint_ifc name="arm_j6"/>
+  </ros2_control>
+
+</robot>

@@ -3,22 +3,37 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.ros
-    image: brickbot/ros:jazzy
-    container_name: brickbot_ros
+    image: vika/ros:jazzy
+    container_name: vika_ros
     network_mode: host
     ipc: host
     pid: host
     privileged: true
+    user: "1000:1000"
     environment:
       - DISPLAY=${DISPLAY:-:0}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
       - ROS_DOMAIN_ID=42
       - QT_X11_NO_MITSHM=1
-      - GZ_PARTITION=brickbot
+      - GZ_PARTITION=vika
+      - GZ_IP=127.0.0.1
       - GZ_TRANSPORT_TOPIC_STATISTICS=1
+      - XDG_RUNTIME_DIR=/run/user/1000
+      - HOME=/tmp
+      # WSL2 GPU passthrough (via /dev/dxg + /usr/lib/wsl)
+      - MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+      - GALLIUM_DRIVER=d3d12
+      - LIBGL_ALWAYS_SOFTWARE=0
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
     volumes:
-      - ../brickbot_ws:/ws
+      - ../vika_ws:/ws
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /mnt/wslg:/mnt/wslg:rw
+      - /usr/lib/wsl:/usr/lib/wsl:ro
       - /dev/dri:/dev/dri
+      - /run/user/1000:/run/user/1000
+    devices:
+      - /dev/dxg:/dev/dxg
     stdin_open: true
     tty: true
     command: bash
@@ -27,17 +42,17 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.hmi
-    image: brickbot/hmi:dev
-    container_name: brickbot_hmi
+    image: vika/hmi:dev
+    container_name: vika_hmi
     network_mode: host
     volumes:
-      - ../brickbot-hmi/src:/app/src
-      - ../brickbot-hmi/public:/app/public
-      - ../brickbot-hmi/index.html:/app/index.html
-      - ../brickbot-hmi/vite.config.ts:/app/vite.config.ts
-      - ../brickbot-hmi/tsconfig.json:/app/tsconfig.json
-      - ../brickbot-hmi/tailwind.config.js:/app/tailwind.config.js
-      - ../brickbot-hmi/postcss.config.js:/app/postcss.config.js
+      - ../vika-hmi/src:/app/src
+      - ../vika-hmi/public:/app/public
+      - ../vika-hmi/index.html:/app/index.html
+      - ../vika-hmi/vite.config.ts:/app/vite.config.ts
+      - ../vika-hmi/tsconfig.json:/app/tsconfig.json
+      - ../vika-hmi/tailwind.config.js:/app/tailwind.config.js
+      - ../vika-hmi/postcss.config.js:/app/postcss.config.js
     ports:
       - "5173:5173"
     stdin_open: true

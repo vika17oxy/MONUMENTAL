@@ -4,10 +4,10 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 WORKDIR /app
 
-COPY brickbot-hmi/package.json ./
+COPY vika-hmi/package.json ./
 RUN pnpm install --prefer-offline || pnpm install
 
-COPY brickbot-hmi/ .
+COPY vika-hmi/ .
 
 EXPOSE 5173
 

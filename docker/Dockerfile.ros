@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-ros-gz-bridge \
     ros-jazzy-moveit \
     ros-jazzy-moveit-servo \
+    ros-jazzy-moveit-ros-visualization \
     ros-jazzy-rosbridge-suite \
     ros-jazzy-ros2-control \
     ros-jazzy-ros2-controllers \
@@ -35,7 +36,7 @@ RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed \
     ultralytics \
     opencv-python-headless
 
-ENV GZ_PARTITION=brickbot
+ENV GZ_PARTITION=vika
 
 WORKDIR /ws
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \

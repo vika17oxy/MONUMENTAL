@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<!--
+  VIKA top-level composition.
+  Usage:
+    xacro vika.urdf.xacro prefix:=robot_a_ tool:=gripper
+-->
+<robot name="vika" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="prefix" default=""/>
+  <xacro:arg name="tool"   default="gripper"/>
+  <xacro:arg name="ns"     default=""/>
+  <xacro:arg name="arm"    default="false"/>
+
+  <xacro:property name="pfx" value="$(arg prefix)"/>
+  <xacro:property name="tool_type" value="$(arg tool)"/>
+  <xacro:property name="ns" value="$(arg ns)"/>
+  <xacro:property name="arm_enabled" value="$(arg arm)"/>
+
+  <xacro:include filename="$(find vika_description)/urdf/base_tracked.xacro"/>
+  <xacro:include filename="$(find vika_description)/urdf/arm_6dof.xacro"/>
+  <xacro:include filename="$(find vika_description)/urdf/tool_gripper.xacro"/>
+  <xacro:include filename="$(find vika_description)/urdf/tool_cement.xacro"/>
+  <xacro:include filename="$(find vika_description)/urdf/vika.ros2_control.xacro"/>
+
+  <xacro:base_tracked prefix="${pfx}"/>
+
+  <xacro:if value="${arm_enabled}">
+    <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link">
+      <origin xyz="-0.3 0 0.2" rpy="0 0 0"/>
+    </xacro:arm_6dof>
+
+    <xacro:if value="${tool_type == 'gripper'}">
+      <xacro:tool_gripper prefix="${pfx}arm_" parent="${pfx}arm_tool0"/>
+    </xacro:if>
+    <xacro:if value="${tool_type == 'cement'}">
+      <xacro:tool_cement prefix="${pfx}arm_" parent="${pfx}arm_tool0"/>
+    </xacro:if>
+  </xacro:if>
+
+  <!--
+    ros2_control integration disabled for Phase 2.
+    Base driving uses the native gz DiffDrive system plugin (see base_tracked.xacro).
+    Arm control will be re-enabled together with MoveIt2 in a later phase.
+  -->
+  <!-- <xacro:vika_ros2_control prefix="${pfx}" ns="${ns}" tool="${tool_type}"/> -->
+
+</robot>
