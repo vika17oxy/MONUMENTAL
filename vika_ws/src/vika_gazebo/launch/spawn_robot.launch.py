@@ -24,7 +24,7 @@ def generate_launch_description():
         FindPackageShare('vika_description'), 'urdf', 'vika.urdf.xacro'
     ])
     desc = ParameterValue(
-        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool, ' ns:=', name]),
+        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool, ' ns:=', name, ' arm:=true']),
         value_type=str,
     )
 

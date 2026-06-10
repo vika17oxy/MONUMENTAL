@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!--
+  Dual-arm cell: two 6-DOF VIKA arms on a shared world frame, both controllable
+  from one MoveIt move_group (planning groups "arm" and "arm_5").
+    - arm A: prefix a_  at world origin
+    - arm B: prefix b_  at (0, -2, 0)
+  One gz_ros2_control plugin runs a single /controller_manager for all 12 joints;
+  two JointTrajectoryControllers (arm_controller / arm_5_controller) drive them.
+-->
+<robot name="vika_dual" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="sim_mode" default="gazebo"/>
+  <xacro:property name="sim_mode" value="$(arg sim_mode)"/>
+
+  <xacro:include filename="$(find vika_description)/urdf/arm_6dof.xacro"/>
+
+  <link name="world"/>
+
+  <!-- Arm A — defines the shared materials -->
+  <xacro:arm_6dof prefix="a_" parent="world">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:arm_6dof>
+
+  <!-- Arm B — reuse materials (define_materials:=false), nozzle-tinted flange mesh -->
+  <xacro:arm_6dof prefix="b_" parent="world" define_materials="false"
+                  mesh_tool0="package://vika_description/meshes/arm/ROD-STL/nozzle.stl">
+    <origin xyz="0 -2.0 0" rpy="0 0 0"/>
+  </xacro:arm_6dof>
+
+  <!-- ===================== ros2_control (12 joints) ===================== -->
+  <xacro:macro name="jif" params="name">
+    <joint name="${name}">
+      <command_interface name="position"/>
+      <state_interface name="position"><param name="initial_value">0.0</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <ros2_control name="vika_dual_system" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <xacro:jif name="a_j1"/>
+    <xacro:jif name="a_j2"/>
+    <xacro:jif name="a_j3"/>
+    <xacro:jif name="a_j4"/>
+    <xacro:jif name="a_j5"/>
+    <xacro:jif name="a_j6"/>
+    <xacro:jif name="b_j1"/>
+    <xacro:jif name="b_j2"/>
+    <xacro:jif name="b_j3"/>
+    <xacro:jif name="b_j4"/>
+    <xacro:jif name="b_j5"/>
+    <xacro:jif name="b_j6"/>
+  </ros2_control>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>/ws/src/vika_moveit/config/dual_ros2_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>

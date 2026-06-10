@@ -2,8 +2,8 @@
 # VIKA — single-entry launch script (Angabe Section 3, line 88)
 #
 # Architecture (Option C: hybrid native + Docker):
-#   - Gazebo Harmonic  : native WSL2 (GPU via WSLg)
-#   - ROS2 Jazzy core  : native WSL2 (same user/namespace as gz → no partition hell)
+#   - Gazebo Harmonic  : native Linux (GPU via NVIDIA PRIME offload)
+#   - ROS2 Jazzy core  : native Linux (same user/namespace as gz → no partition hell)
 #     - gz_ros2_control plugin, ros2_control, MoveIt2 deps, ros_gz_bridge
 #   - Docker container : higher-level nodes (rosbridge, MCP, perception)
 #                        connects via DDS on ROS_DOMAIN_ID=42 (network_mode: host)
@@ -15,9 +15,9 @@ cd "$SCRIPT_DIR"
 
 export ROS_DOMAIN_ID=42
 
-# Force NVIDIA dGPU for WSLg rendering (laptop hybrid: Iris Xe + RTX 3080Ti)
-export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
-export GALLIUM_DRIVER=d3d12
+# Force NVIDIA dGPU for rendering (native Linux hybrid: Intel iGPU + RTX 3080Ti)
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
 
 # Gazebo must find gz_ros2_control-system plugin (ships with ros-jazzy-gz-ros2-control)
 export GZ_SIM_SYSTEM_PLUGIN_PATH="${GZ_SIM_SYSTEM_PLUGIN_PATH:-}:/opt/ros/jazzy/lib"

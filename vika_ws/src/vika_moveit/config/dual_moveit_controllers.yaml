@@ -1,0 +1,18 @@
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - arm_controller
+    - arm_5_controller
+
+  arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [a_j1, a_j2, a_j3, a_j4, a_j5, a_j6]
+
+  arm_5_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [b_j1, b_j2, b_j3, b_j4, b_j5, b_j6]

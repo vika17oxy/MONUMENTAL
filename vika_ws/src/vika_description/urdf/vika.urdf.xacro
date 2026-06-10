@@ -10,11 +10,15 @@
   <xacro:arg name="tool"   default="gripper"/>
   <xacro:arg name="ns"     default=""/>
   <xacro:arg name="arm"    default="false"/>
+  <!-- use_meshes:=true loads the Fusion CAD STLs; false uses the primitive
+       box/cylinder fallbacks that match the joint kinematics exactly. -->
+  <xacro:arg name="use_meshes" default="true"/>
 
   <xacro:property name="pfx" value="$(arg prefix)"/>
   <xacro:property name="tool_type" value="$(arg tool)"/>
   <xacro:property name="ns" value="$(arg ns)"/>
   <xacro:property name="arm_enabled" value="$(arg arm)"/>
+  <xacro:property name="use_meshes" value="$(arg use_meshes)"/>
 
   <xacro:include filename="$(find vika_description)/urdf/base_tracked.xacro"/>
   <xacro:include filename="$(find vika_description)/urdf/arm_6dof.xacro"/>
@@ -25,9 +29,18 @@
   <xacro:base_tracked prefix="${pfx}"/>
 
   <xacro:if value="${arm_enabled}">
-    <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link">
-      <origin xyz="-0.3 0 0.2" rpy="0 0 0"/>
-    </xacro:arm_6dof>
+    <xacro:if value="${use_meshes}">
+      <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link">
+        <origin xyz="-0.3 0 0.2" rpy="0 0 0"/>
+      </xacro:arm_6dof>
+    </xacro:if>
+    <xacro:unless value="${use_meshes}">
+      <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link"
+                      mesh_base_link="" mesh_link1="" mesh_link2="" mesh_link3=""
+                      mesh_link4="" mesh_link5="" mesh_tool0="">
+        <origin xyz="-0.3 0 0.2" rpy="0 0 0"/>
+      </xacro:arm_6dof>
+    </xacro:unless>
 
     <xacro:if value="${tool_type == 'gripper'}">
       <xacro:tool_gripper prefix="${pfx}arm_" parent="${pfx}arm_tool0"/>

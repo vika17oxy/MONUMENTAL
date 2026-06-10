@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two independent planning groups, one per arm. Switch between them in RViz
+     via the MotionPlanning "Planning Group" dropdown. -->
+<robot name="vika_dual">
+
+  <group name="arm">
+    <chain base_link="a_base_link" tip_link="a_tool0"/>
+  </group>
+  <group name="arm_5">
+    <chain base_link="b_base_link" tip_link="b_tool0"/>
+  </group>
+
+  <group_state name="home" group="arm">
+    <joint name="a_j1" value="0"/>
+    <joint name="a_j2" value="0"/>
+    <joint name="a_j3" value="0"/>
+    <joint name="a_j4" value="0"/>
+    <joint name="a_j5" value="0"/>
+    <joint name="a_j6" value="0"/>
+  </group_state>
+  <group_state name="home" group="arm_5">
+    <joint name="b_j1" value="0"/>
+    <joint name="b_j2" value="0"/>
+    <joint name="b_j3" value="0"/>
+    <joint name="b_j4" value="0"/>
+    <joint name="b_j5" value="0"/>
+    <joint name="b_j6" value="0"/>
+  </group_state>
+
+  <!-- Arm A adjacencies -->
+  <disable_collisions link1="a_base_link" link2="a_link1" reason="Adjacent"/>
+  <disable_collisions link1="a_link1" link2="a_link2" reason="Adjacent"/>
+  <disable_collisions link1="a_link2" link2="a_link3" reason="Adjacent"/>
+  <disable_collisions link1="a_link3" link2="a_link4" reason="Adjacent"/>
+  <disable_collisions link1="a_link4" link2="a_link5" reason="Adjacent"/>
+  <disable_collisions link1="a_link5" link2="a_tool0" reason="Adjacent"/>
+  <disable_collisions link1="a_base_link" link2="a_link2" reason="Never"/>
+  <disable_collisions link1="a_link1" link2="a_link3" reason="Never"/>
+  <disable_collisions link1="a_link2" link2="a_link4" reason="Never"/>
+  <disable_collisions link1="a_link3" link2="a_link5" reason="Never"/>
+  <disable_collisions link1="a_link4" link2="a_tool0" reason="Never"/>
+
+  <!-- Arm B adjacencies -->
+  <disable_collisions link1="b_base_link" link2="b_link1" reason="Adjacent"/>
+  <disable_collisions link1="b_link1" link2="b_link2" reason="Adjacent"/>
+  <disable_collisions link1="b_link2" link2="b_link3" reason="Adjacent"/>
+  <disable_collisions link1="b_link3" link2="b_link4" reason="Adjacent"/>
+  <disable_collisions link1="b_link4" link2="b_link5" reason="Adjacent"/>
+  <disable_collisions link1="b_link5" link2="b_tool0" reason="Adjacent"/>
+  <disable_collisions link1="b_base_link" link2="b_link2" reason="Never"/>
+  <disable_collisions link1="b_link1" link2="b_link3" reason="Never"/>
+  <disable_collisions link1="b_link2" link2="b_link4" reason="Never"/>
+  <disable_collisions link1="b_link3" link2="b_link5" reason="Never"/>
+  <disable_collisions link1="b_link4" link2="b_tool0" reason="Never"/>
+
+</robot>
