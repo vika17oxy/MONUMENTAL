@@ -1,0 +1,44 @@
+# MoveIt Servo config for robot_a (VIKA 6, 6-DOF arm) — real-time Cartesian /
+# joint jogging for the HMI. Streams to the live arm_controller.
+###############################################################################
+publish_period: 0.02            # 50 Hz output
+max_expected_latency: 0.1
+command_in_type: "unitless"     # twist components in [-1, 1] (joystick-like)
+scale:
+  linear: 0.3                   # max linear vel [m/s] at full command
+  rotational: 0.8               # max angular vel [rad/s]
+  joint: 0.6
+command_out_type: trajectory_msgs/JointTrajectory
+publish_joint_positions: true
+publish_joint_velocities: true
+publish_joint_accelerations: false
+use_smoothing: false
+smoothing_filter_plugin_name: "online_signal_smoothing::AccelerationLimitedPlugin"
+is_primary_planning_scene_monitor: false
+check_octomap_collisions: false
+
+move_group_name: arm
+planning_frame: world
+ee_frame_name: robot_a_arm_tcp
+robot_link_command_frame: world
+
+# singularity handling
+lower_singularity_threshold: 17.0
+hard_stop_singularity_threshold: 30.0
+leaving_singularity_threshold_multiplier: 2.0
+joint_limit_margins: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+# topics
+cartesian_command_in_topic: ~/delta_twist_cmds
+joint_command_in_topic: ~/delta_joint_cmds
+joint_topic: /robot_a/joint_states
+status_topic: ~/status
+command_out_topic: /robot_a/arm_controller/joint_trajectory
+
+# collision — the arm collision is a coarse primitive model and self-collision
+# is fully disabled in the SRDF, so servo's collision monitor adds little but
+# crashes on the scene-monitor setup here. Disable it (the operator jogs).
+check_collisions: false
+collision_check_rate: 10.0
+self_collision_proximity_threshold: 0.01
+scene_collision_proximity_threshold: 0.02

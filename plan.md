@@ -512,122 +512,88 @@ ros2 launch vika_bringup arm_demo.launch.py
 ```
 
 ---
-
 ## 18. Current Implementation State & Handoff
 
-> Status: 2026-05-05, shortly before the interim-presentation demo. Describes the **actual state** of the code (complementing the target roadmap above). VIKA = **V**irtual **I**ndustrial **K**inematic **A**rm. Tagline: *"Draw a wall. Watch it rise."*
+> Status: 2026-06-20. Describes the **actual current state** of the code. VIKA = **V**irtual **I**ndustrial **K**inematic **A**rm. Tagline: *"Draw a wall. Watch it rise."*
+> This section supersedes the older roadmap above wherever they disagree.
 
-### 18.1 Runtime Stack (as-is)
-- WSL2 Ubuntu 24.04 + Docker Desktop
-- native Gazebo Harmonic (GPU passthrough via WSLg `/dev/dxg`)
-- Docker container `vika_ros` (ROS 2 Jazzy, MoveIt 2, gz_ros2_control)
-- React/Vite HMI (port 5173, local native)
-- Fusion 360 + MCP plugin (port 27182) for the CAD-→-URDF pipeline
+### 18.1 Runtime stack (as-is)
+- Native Linux + Docker (no WSL). All ROS 2 Jazzy + Gazebo Harmonic run **inside the `vika_ros` container**; the HMI runs in `vika_hmi`.
+- **`./start-docker.sh`** is the single entry point: headless Gazebo **server** (`gz sim -r -s`) + a **separate GUI client** forced onto Mesa software GLX (NVIDIA/Wayland crashes the GUI otherwise) + `full_demo.launch.py` (bridge, robot spawn, controllers) + rosbridge, then `reset_bricks.sh` and `fold_arms.py`.
+- The GUI is optional/cosmetic; the server, controllers and HMI do not need it.
 
-> ⚠ **Native ROS 2 Jazzy in WSL is broken** (fastcdr ABI mismatch in moveit-msgs / controller-manager-msgs). Therefore **everything ROS-related runs in Docker**; `ros2 run` is not available natively.
+### 18.2 Use case (assignment §2)
+Two cooperating, self-designed serial robots on parallel **linear rails**, facing each other across a wall line, building a brick wall:
+- **robot_a — VIKA (Elias):** 6-DOF articulated arm + **vacuum suction gripper** (3 pads → picks a row of 3 bricks). Pick & place from the pallet.
+- **robot_b — VIKA 5 (Viktoriia):** 5-effective-DOF arm (j4 locked) + **cement nozzle**. Traces the wall edge (cement bead).
+Two deliberately different kinematics / end effectors → satisfies the "different kinematics per member" rule.
 
-### 18.2 What Works
+### 18.3 What works (verified)
+- **Two robots, no collapse.** `gz_ros2_control` holds every joint; arms spawn in a compact **folded stow pose** along their rails (no "kissing" in the centre, no drooping).
+- **Linear rail base** (replaces the earlier tracked mobile base): each robot is anchored in the URDF (`base_x` / `base_yaw` — the world-fixed rail ignores the spawn pose) at ±2 m, on a 12.5 m rail; the carriage is a prismatic joint driven by `rail_controller`.
+- **Stable physics:** arm collision is **primitive** (boxes/cylinders), not trimesh — 0 ODE trimesh-overflows (was 1000+), no gz crash.
+- **MoveIt `move_group`** runs against the live `gz_ros2_control` controllers; **`/compute_ik` works** (KDL), TF chain intact.
+- **Vacuum attach/lift mechanism:** 3 gz `DetachableJoint`s grab the 3 dynamic pick bricks on an attach topic; `reset_bricks.sh` drops them cleanly onto the pallet at startup.
+- **Tests:** `./scripts/run_tests.sh` — 18 unit tests (xacro/SRDF/config) + 11 e2e smoke checks (joint_states, no-collapse, IK service, TF) — all green on a healthy sim.
 
-**✅ Highly stable**
-- **URDF generated from Fusion via MCP** (no xacro guessing) — component poses read from the active assembly v17 → joint origins + rpy computed
-- **6-DOF kinematics**: all 6 joints correctly chained, gripper flanged on, TCP frame defined
-- **MoveIt + RViz** with interactive marker (gizmo ball), planning group `arm`, OMPL planner
-- **Gazebo + ros2_control + MoveIt chain**: gz_ros2_control plugin loads, controller_manager spawns joint_state_broadcaster + arm_controller, MoveIt commands Gazebo via FollowJointTrajectory
-- **Pallet + 6 bricks** in Gazebo (visual + collision); pallet also a collision object in the MoveIt scene (visible in RViz)
-- **Second robot `vika_5`** spawned as a twin in Gazebo — same URDF with a `vika_5_` prefix (regex in the Python launch)
+### 18.4 What is fragile / open (needs interactive debug)
+- **Live trajectory execution is unreliable after the rail-anchoring change.** `arm_controller` reports `Goal reached, success!` but the arm sometimes does not move (especially once it has been driven into a tangled pose), and a MoveGroup-planned pose can report success yet land the TCP at the wrong place — a **frame / execution mismatch** that needs hands-on debugging (suspects: gz_ros2_control state after a contorted pose, or the world-anchored base interacting with the IK/planning frame).
+- Consequence: the end-to-end **pick** (`pick3_lift.py`) and **TCP jog** (`tcp_jog.py`) are written and correct-by-design but do not yet run cleanly start-to-finish in this build.
+- **`start-docker.sh` / `docker exec -d` launches are intermittently flaky** — a relaunch sometimes does not actually (re)start gz; re-run, or launch the steps manually. The container was also OOM-killed once during a long idle (Exit 137); just `docker compose up -d` to bring it back.
+- **HMI ↔ rail/jog:** the web HMI still publishes the dead `cmd_vel` (from the mobile-base era); the TCP jog is implemented as a **console app** (`tcp_jog.py`, assignment §3 minimum) but not yet wired into the web UI.
 
-**⚠️ Half-working / fragile**
-- **TCP orientation**: the TCP frame does not point intuitively downward; IK with a "Z-down" constraint often fails. Workaround: position-only IK without orientation. Clean fix: set `gripper_to_tcp` rpy correctly (not trivial).
-- **`build_wall.py` pick & place**: pick (hover over brick) works sporadically, place is unstable (`START_STATE_IN_COLLISION` / `PLANNING_FAILED`). `force_home()` between bricks helps. The robot is too big (5 m+ reach) for the brick distances → IK is constraint-arm.
-- **Twin robot in RViz**: TF frames with `vika_5_` prefix + joint_state_publisher (`publish_default_positions:true`). Meshes load, TF comes through (fix: lookbehind regex `(?<![\w])`), but requires `bash scripts/stop.sh && bash scripts/start-full.sh` to take effect.
-
-**❌ Not started**
-- HMI ↔ ROS connection (rosbridge, line drawing → mission topic)
-- full "wall-building" demo choreography
-- octomap / sensor pipeline
-- real-hardware integration
-
-### 18.3 Key Files (as-is code)
+### 18.5 Key files (as-is)
 ```
 vika_ws/src/
 ├── vika_description/
-│   ├── urdf/base_only.urdf.xacro    ← CORE URDF, MCP-generated, sim_mode arg (mock|gazebo|passive)
-│   ├── meshes/arm/ROD-STL/*.stl     ← STLs from Fusion (base, link1..link6, gripper, brick)
-│   ├── launch/view_base.launch.py   ← standalone RViz viewer (RobotModel only)
-│   └── rviz/view_base.rviz          ← custom RViz config with world axes
+│   ├── urdf/vika.urdf.xacro            ← top-level: base_rail + arm_6dof + tool + ros2_control
+│   ├── urdf/base_rail.xacro            ← world-anchored rail + prismatic carriage (base_x/base_yaw)
+│   ├── urdf/arm_6dof.xacro             ← 6-DOF arm; PRIMITIVE collision, mesh visual
+│   ├── urdf/tool_gripper.xacro         ← vacuum gripper: bar + 3 suction pads + 3 DetachableJoints
+│   ├── urdf/tool_cement.xacro          ← cement nozzle (robot_b)
+│   ├── urdf/vika.ros2_control.xacro    ← gz_ros2_control; folded initial_value (stow pose)
+│   ├── meshes/arm/ROD-STL/*.stl        ← Fusion STLs (visual only)
+│   └── test/test_xacro.py              ← unit tests (parse + structure)
 ├── vika_moveit/
-│   ├── config/
-│   │   ├── vika.srdf                  ← planning groups: "arm", "gripper", end_effector
-│   │   ├── vika_kinematics.yaml       ← KDL solver
-│   │   ├── vika_joint_limits.yaml     ← j1..j6 vel/accel
-│   │   ├── vika_ros2_controllers.yaml ← arm_controller (JointTrajectoryController)
-│   │   └── vika_moveit_controllers.yaml ← MoveIt → controller mapping
-│   ├── launch/
-│   │   ├── vika_moveit.launch.py    ← MoveIt only (mock_components)
-│   │   └── vika_full.launch.py      ← MoveIt + Gazebo + twin (MAIN LAUNCH)
-│   └── scripts/
-│       ├── publish_scene.py    ← pallet as a CollisionObject in the MoveIt scene
-│       ├── goto_brick.py       ← MIN test: home + approach one brick
-│       └── build_wall.py       ← 6-brick pick & place choreo (fragile)
-└── vika_gazebo/
-    ├── worlds/construction_site.sdf  ← world with pallet + 6 bricks (visual)
-    └── launch/spawn_robot.launch.py  ← (older, not in use)
+│   ├── config/robot_a.{srdf,_kinematics,_joint_limits,_moveit_controllers}.yaml
+│   ├── launch/robot_a_move_group.launch.py  ← move_group for the live robot_a
+│   ├── scripts/arm_client.py           ← reusable IK(seed,collision)+action exec + MoveGroup plan
+│   ├── scripts/tcp_jog.py              ← console HMI: linear TCP jog via IK (assignment §3)
+│   ├── scripts/pick3_lift.py           ← 3-brick längs pick (lower→attach→lift)
+│   ├── scripts/fold_arms.py            ← stow both arms along their rails
+│   └── test/test_config.py             ← unit tests (SRDF/kinematics/controllers)
+├── vika_gazebo/
+│   ├── worlds/construction_site.sdf    ← pallet + static bricks + 3 dynamic pick bricks
+│   └── scripts/reset_bricks.sh         ← detach + set_pose pick bricks onto the pallet
+├── vika_control/config/controllers_robot_{a,b}.yaml  ← jsb + arm + rail (+ tool) controllers
+└── vika_bringup/
+    ├── launch/full_demo.launch.py      ← bridge + spawn both robots + controllers
+    └── test/e2e_check.py               ← e2e smoke checks against a running sim
 
-scripts/
-├── start-full.sh   ← MASTER: container recreate + Gazebo + ROS stack
-├── start-moveit.sh ← MoveIt only without Gazebo
-├── start-gazebo.sh ← Gazebo only (older)
-├── stop.sh         ← kills everything (container + host)
-├── kill-all.sh     ← aggressive kill
-├── view-arm.sh     ← standalone view (URDF watcher)
-└── start.sh        ← view with URDF hot-reload watcher
-
-docker/docker-compose.yml ← container `vika_ros`: user 1000:1000, /dev/dxg + /usr/lib/wsl + /mnt/wslg
-                            GPU passthrough, GZ_PARTITION=vika, GZ_IP=127.0.0.1, ROS_DOMAIN_ID=42
+start-docker.sh           ← MASTER launcher (headless server + Mesa GUI + stack + reset/fold)
+scripts/run_tests.sh      ← unit + e2e test runner
 ```
 
-### 18.4 Demo Workflow (start-from-zero)
+### 18.6 Demo workflow (start-from-zero)
 ```bash
-# 1. Start everything
-bash scripts/stop.sh
-bash scripts/start-full.sh
-# → Gazebo (pallet + bricks + 2 robots) + RViz (MotionPlanning)
-
-# 2. Pallet scene publisher runs automatically (5s after start) → green obstacle in RViz
-
-# 3. (Optional) pick & place — unreliable:
-docker exec -it vika_ros bash -lc '
-  source /opt/ros/jazzy/setup.bash; source /ws/install/setup.bash
-  export ROS_DOMAIN_ID=42
-  ros2 run vika_moveit build_wall.py'
-
-# 4. Single hover (more reliable): ros2 run vika_moveit goto_brick.py
-# 5. RViz gizmo manually: MotionPlanning → drag the ball → "Plan & Execute" (robust)
+./start-docker.sh                 # brings up gz (headless) + GUI + both robots + controllers
+./scripts/run_tests.sh            # 18 unit + 11 e2e checks — proves the sim is healthy
+# HMI:       http://localhost:5173
+# console TCP jog (once move_group is up):  ros2 launch vika_moveit robot_a_move_group.launch.py
+#   then:    python3 /ws/src/vika_moveit/scripts/tcp_jog.py   (x+/x-/y+/y-/z+/z-)
+./start-docker.sh stop            # stop the sim processes
 ```
 
-### 18.5 Known Pitfalls
-1. **Restart the container** when `docker-compose.yml` changes (`docker compose down`)
-2. **Gazebo mesh paths**: `GZ_SIM_RESOURCE_PATH=/ws/src:/ws/install/vika_description/share:/ws/install/vika_gazebo/share` (parent-of-package, otherwise `model://vika_description/...` does not resolve)
-3. **gz_ros2_control plugin** is named `gz_ros2_control::GazeboSimROS2ControlPlugin` (NOT `...System`)
-4. **Twin URDF prefixing**: regex `(?<![\w])(name|link|parent|child|reference)="..."` with lookbehind, otherwise it also matches `filename="..."`
-5. **`/run/user/1000` mount** in compose matters for gz-transport sockets (container ↔ native Gazebo)
-6. **Native ROS 2 Jazzy broken** (fastcdr ABI) → everything in Docker
-7. **JointTrajectoryController bypass for home pose** (`force_home()`): goes directly via `/arm_controller/follow_joint_trajectory`, bypassing the MoveIt collision check
+### 18.7 Known pitfalls (current)
+1. **`GZ_PARTITION=vika` is required** for any `gz` CLI from a fresh `docker exec` shell (else `gz topic/model/service` silently see nothing).
+2. **Gazebo GUI segfaults in `libGLX_nvidia`** (Wayland/Xwayland) — the GUI client is forced onto Mesa software GLX (`__GLX_VENDOR_LIBRARY_NAME=mesa`).
+3. **URDF→SDF fixed-joint lumping** merges the gripper/pad links into `*_arm_tool0`; gz plugins (DetachableJoint) must reference `tool0`.
+4. **gz `DetachableJoint` auto-attaches at load** — `reset_bricks.sh` detaches + repositions the bricks at startup.
+5. **Coarse primitive collision** → MoveIt self-collision is fully disabled in the SRDF (it would otherwise report false `START_STATE_IN_COLLISION`).
+6. **`pkill -f` in scripts must use the `[x]`-bracket trick** (a bare pattern matches the killer shell → SIGKILL / exit 137).
 
-### 18.6 MCP Workflow for URDF Updates from Fusion
-In Fusion, move a component position / reset an origin → re-export the STL into the `ROD-STL` folder. Then:
-```python
-# read MCP component poses (assembly v17)
-# → compute joint origin xyz + rpy in the parent frame
-# → update vika_description/urdf/base_only.urdf.xacro
-# → restart: bash scripts/stop.sh && bash scripts/start-full.sh
-```
-One dedicated MCP script call per link, with xyz + rpy from quaternion decomposition.
-
-### 18.7 Recommendations for the Next Session
-**P1 — demo robustness:** polish `goto_brick.py` into a reliable demo asset (hover → home → hover). Skip `build_wall.py` for the demo (too fragile) — instead prepare 2–3 manually triggered gizmo-pose sequences.
-**P2 — if time:** fix the `gripper_to_tcp` URDF rpy (TCP-Z naturally pointing down). Final-test the twin robot J4-only-fixed (JSP runs, final test was missing).
-**P3 — HMI integration:** HMI on port 5173 (Vite native), has a WallDrawPanel, but topic publishing via rosbridge is missing entirely.
-
-### 18.8 Last Open Thread
-The user wanted the twin robot with only J4 fixed (instead of all fixed). Last edit: added a `joint_state_publisher` in the `vika_5` namespace with `publish_default_positions:true`, **not finally tested** whether TF + meshes load completely for the twin. First action next session: `bash scripts/stop.sh && bash scripts/start-full.sh` and check visually.
+### 18.8 Recommendations for the next session
+**P1 — fix live execution:** from a *fresh* `./start-docker.sh`, command a single arm joint via the action and confirm the arm physically moves; if not, isolate `gz_ros2_control` (command vs state interface) before re-testing `tcp_jog.py` / `pick3_lift.py`. Resolve the move_group planning-frame mismatch (TCP target vs achieved pose).
+**P2 — wire the HMI** TCP-jog buttons to `tcp_jog`/MoveIt Servo instead of the dead `cmd_vel`.
+**P3 — robot_b participation:** trace the wall edge with the cement nozzle (Cartesian path) so both robots demonstrably share the process.
+**P4 — docs PDF** (assignment §4): the markdown is current; render `vika_docs` (Sphinx → LaTeX → PDF).

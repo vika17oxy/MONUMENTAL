@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<!--
+  Linear rail base (replaces the tracked mobile base).
+
+  A fixed rail beam is anchored to the world; a single prismatic joint
+  (rail_joint) slides a carriage (base_link) along the world +Y axis.
+  The 6-DOF arm mounts on base_link exactly as before.
+
+  All primitives — no meshes needed. The prismatic joint is actuated through
+  ros2_control (see vika.ros2_control.xacro) so it holds position under gravity.
+
+  Layout (world frame, model spawned at the robot's x/y):
+    world ──(fixed)── rail_base   beam along Y, z≈0.15
+            ──(prismatic, axis +Y)── base_link   carriage, arm sits on top
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- base_x / base_yaw anchor the whole robot in the world. The spawn pose is
+       IGNORED for the world-fixed rail (the world link pins to the gz origin),
+       so placement MUST be baked here. base_yaw=pi makes a robot face -X. -->
+  <xacro:macro name="base_rail" params="prefix base_x:=0 base_yaw:=0 rail_length:=12.5 travel:=8.0">
+
+    <material name="rail_grey"><color rgba="0.25 0.25 0.28 1"/></material>
+    <material name="carriage_dark"><color rgba="0.18 0.18 0.2 1"/></material>
+
+    <!-- World anchor: pins the rail in place (gz fixes a 'world'-parented joint). -->
+    <link name="world"/>
+
+    <joint name="${prefix}rail_fixed" type="fixed">
+      <parent link="world"/>
+      <child link="${prefix}rail_base"/>
+      <origin xyz="${base_x} 0 0.15" rpy="0 0 ${base_yaw}"/>
+    </joint>
+
+    <!-- Fixed rail beam: long along +Y. Shifted +travel/2 so the carriage's
+         one-directional travel [0, travel] sits on the beam (pallet at the start
+         end, robot lays a full length toward +Y). -->
+    <!-- lay_sign flips the one-directional travel into WORLD +Y for both robots:
+         the rail_base is rotated by base_yaw, so for robot_b (yaw=pi) local +Y is
+         world -Y; cos(base_yaw) = +1 (yaw 0) / -1 (yaw pi) cancels that. -->
+    <xacro:property name="lay_sign" value="${cos(base_yaw)}"/>
+    <link name="${prefix}rail_base">
+      <visual>
+        <origin xyz="0 ${lay_sign*travel/2} 0"/>
+        <geometry><box size="0.25 ${rail_length} 0.12"/></geometry>
+        <material name="rail_grey"/>
+      </visual>
+      <collision>
+        <origin xyz="0 ${lay_sign*travel/2} 0"/>
+        <geometry><box size="0.25 ${rail_length} 0.12"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="80.0"/>
+        <inertia ixx="40.0" iyy="2.0" izz="42.0" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- Prismatic carriage along world +Y -->
+    <joint name="${prefix}rail_joint" type="prismatic">
+      <parent link="${prefix}rail_base"/>
+      <child link="${prefix}base_link"/>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${(lay_sign-1)*travel/2}" upper="${(lay_sign+1)*travel/2}" effort="2000" velocity="0.8"/>
+      <dynamics damping="50.0" friction="20.0"/>
+    </joint>
+
+    <!-- Carriage: a dark slider centred on the rail, footprint matching the arm
+         base plate (~0.5 m, from base.stl). The arm mounts centred at +0.2 z on
+         base_link (see vika.urdf.xacro), so the block sits squarely under it. -->
+    <link name="${prefix}base_link">
+      <visual>
+        <origin xyz="0 0 0.0" rpy="0 0 0"/>
+        <geometry><box size="0.9 0.9 0.18"/></geometry>
+        <material name="carriage_dark"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0.0" rpy="0 0 0"/>
+        <geometry><box size="0.9 0.9 0.18"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="40.0"/>
+        <inertia ixx="1.5" iyy="2.0" izz="2.0" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+  </xacro:macro>
+
+</robot>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MoveIt semantic description for the LIVE robot_b (rail + 6-DOF arm + vacuum
+     gripper, xacro prefix robot_b_arm_, model name "vika").
+     Planning group = the 6 revolute arm joints only; the rail (robot_b_rail_joint,
+     prismatic) is positioned separately and read from joint_states as a passive
+     offset, matching real rail/gantry masonry robots.
+
+     NOTE: the arm uses coarse PRIMITIVE collision shapes (boxes/cylinders at the
+     joint frames) so Gazebo physics stays cheap. Those primitives overlap in
+     normal poses, which would make MoveIt flag false self-collisions and refuse
+     to plan (START_STATE_IN_COLLISION). Self-collision among the arm links is
+     therefore fully disabled here; environment collisions are handled via the
+     planning scene instead. -->
+<robot name="vika">
+
+  <!-- IK tip = cement_base (rigid to j6, BEFORE the revolute cement_angle) so the
+       arm group is a clean 6-DOF chain. If the tip were robot_b_arm_tcp (after
+       cement_angle) the group would be 7-DOF/redundant: IK would split the
+       solution across j4 AND cement_angle, but only j1-j6 reach the controller,
+       so the executed pose would be wrong + j4 twitches on a straight jog. -->
+  <group name="arm">
+    <chain base_link="robot_b_arm_base_link" tip_link="robot_b_arm_cement_base"/>
+  </group>
+
+  <group name="cement">
+    <link name="robot_b_arm_cement_base"/>
+    <link name="robot_b_arm_nozzle"/>
+    <link name="robot_b_arm_tcp"/>
+  </group>
+
+  <end_effector name="nozzle" parent_link="robot_b_arm_tool0" group="cement"/>
+
+  <group_state name="home" group="arm">
+    <joint name="robot_b_arm_j1" value="0"/>
+    <joint name="robot_b_arm_j2" value="0"/>
+    <joint name="robot_b_arm_j3" value="0"/>
+    <joint name="robot_b_arm_j4" value="0"/>
+    <joint name="robot_b_arm_j5" value="0"/>
+    <joint name="robot_b_arm_j6" value="0"/>
+  </group_state>
+
+  <!-- All self-collision pairs disabled (coarse primitive collision model). -->
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_base_link" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_base_link" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_link1" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_rail_base" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_base_link" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_link1" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_base_link" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_base_link" link2="robot_b_arm_link1" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_base_link" link2="robot_b_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_base_link" link2="robot_b_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_base_link" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_base_link" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_base_link" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link1" link2="robot_b_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link1" link2="robot_b_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link1" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link1" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link1" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link2" link2="robot_b_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link2" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link2" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link2" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link3" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link3" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link3" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link4" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link4" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_link5" link2="robot_b_arm_tool0" reason="Never"/>
+  <!-- cement tool: coarse primitive collisions overlap -> disable -->
+  <disable_collisions link1="robot_b_arm_cement_base" link2="robot_b_arm_nozzle" reason="Adjacent"/>
+  <disable_collisions link1="robot_b_arm_cement_base" link2="robot_b_arm_tool0" reason="Adjacent"/>
+  <disable_collisions link1="robot_b_arm_cement_base" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_cement_base" link2="robot_b_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_nozzle" link2="robot_b_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_nozzle" link2="robot_b_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_b_arm_nozzle" link2="robot_b_arm_link4" reason="Never"/>
+</robot>

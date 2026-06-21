@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!-- A thin grey mortar strip, spawned by lay_cement.sh as VIKA-5 runs its nozzle
+     along the top of the wall VIKA-6 built. -->
+<sdf version="1.7">
+  <model name="cement_strip">
+    <static>true</static>
+    <link name="link">
+      <visual name="v">
+        <geometry><box><size>0.30 0.45 0.03</size></box></geometry>
+        <material><ambient>0.6 0.6 0.62 1</ambient><diffuse>0.7 0.7 0.72 1</diffuse></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

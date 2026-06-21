@@ -42,63 +42,74 @@
     <!-- ============================================================ -->
     <model name="euro_pallet">
       <static>true</static>
-      <pose>1.4 0.0 0.072 0 0 0</pose>
+      <pose>-0.6 0.3 0.072 0 0 0</pose>
       <link name="pallet">
         <visual name="deck_top">
           <pose>0 0 0.060 0 0 0</pose>
-          <geometry><box><size>1.2 0.8 0.024</size></box></geometry>
+          <geometry><box><size>1.45 1.0 0.024</size></box></geometry>
           <material><ambient>0.55 0.35 0.18 1</ambient><diffuse>0.65 0.42 0.22 1</diffuse></material>
         </visual>
         <collision name="deck_top_c">
           <pose>0 0 0.060 0 0 0</pose>
-          <geometry><box><size>1.2 0.8 0.024</size></box></geometry>
+          <geometry><box><size>1.45 1.0 0.024</size></box></geometry>
         </collision>
 
         <visual name="deck_bot">
           <pose>0 0 -0.060 0 0 0</pose>
-          <geometry><box><size>1.2 0.8 0.024</size></box></geometry>
+          <geometry><box><size>1.45 1.0 0.024</size></box></geometry>
           <material><ambient>0.55 0.35 0.18 1</ambient><diffuse>0.65 0.42 0.22 1</diffuse></material>
         </visual>
 
         <visual name="stringer_l">
-          <pose>0 -0.36 0 0 0 0</pose>
-          <geometry><box><size>1.2 0.10 0.10</size></box></geometry>
+          <pose>0 -0.45 0 0 0 0</pose>
+          <geometry><box><size>1.45 0.10 0.10</size></box></geometry>
           <material><ambient>0.50 0.32 0.16 1</ambient><diffuse>0.60 0.38 0.20 1</diffuse></material>
         </visual>
         <visual name="stringer_m">
           <pose>0 0 0 0 0 0</pose>
-          <geometry><box><size>1.2 0.10 0.10</size></box></geometry>
+          <geometry><box><size>1.45 0.10 0.10</size></box></geometry>
           <material><ambient>0.50 0.32 0.16 1</ambient><diffuse>0.60 0.38 0.20 1</diffuse></material>
         </visual>
         <visual name="stringer_r">
-          <pose>0 0.36 0 0 0 0</pose>
-          <geometry><box><size>1.2 0.10 0.10</size></box></geometry>
+          <pose>0 0.45 0 0 0 0</pose>
+          <geometry><box><size>1.45 0.10 0.10</size></box></geometry>
           <material><ambient>0.50 0.32 0.16 1</ambient><diffuse>0.60 0.38 0.20 1</diffuse></material>
         </visual>
       </link>
     </model>
 
     <!-- ============================================================ -->
-    <!-- BRICKS — 6 stones, 2x3 grid on top of pallet                   -->
+    <!-- BRICKS — 9 stones, 3x3 grid on top of pallet                   -->
     <!-- Brick size: 0.375 x 0.25 x 0.238 m (from brick.stl)            -->
     <!-- Pallet top z = 0.144, brick base z = 0.144                      -->
-    <!-- Brick center z = 0.144 + 0.119 = 0.263                         -->
+    <!-- 3 rows along X (x = -0.42, 0, +0.42 -> ~0.045 m gaps), 3 cols along -->
+    <!-- Y (y = -0.29, 0, +0.29 -> ~0.04 m gaps) aligned to the gripper's    -->
+    <!-- suction pads so one suction pass picks a full row of 3 bricks.      -->
     <!-- ============================================================ -->
-    <model name="brick_stack">
-      <static>true</static>
-      <pose>1.4 0 0.144 0 0 0</pose>
-      <link name="bricks">
-        <!-- 2 rows along X, 3 cols along Y; brick footprint 0.375 x 0.25 -->
-        <visual name="b00"><pose>-0.20 -0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
-        <visual name="b01"><pose>-0.20  0.00 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
-        <visual name="b02"><pose>-0.20  0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
-        <visual name="b10"><pose> 0.20 -0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
-        <visual name="b11"><pose> 0.20  0.00 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
-        <visual name="b12"><pose> 0.20  0.27 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.65 0.30 0.22 1</ambient><diffuse>0.78 0.36 0.26 1</diffuse></material></visual>
+
+
+    <!-- ============================================================ -->
+    <!-- DYNAMIC pick bricks: a LÄNGS row along X (end-to-end on their long     -->
+    <!-- axis) at y=+0.29, x = 0.98 / 1.40 / 1.82 (spacing 0.42 = brick length  -->
+    <!-- + gap), aligned to the gripper's suction pads (which span world X via  -->
+    <!-- the längs yaw). r/c/l map to x = 0.98 / 1.40 / 1.82. Resting on the    -->
+    <!-- pallet deck (top z=0.144). NOTE: gz DetachableJoint auto-attaches at   -->
+    <!-- load, so start-docker.sh runs reset_bricks (detach + set_pose) to drop -->
+    <!-- them cleanly onto the pallet after the arm settles. -->
+    <!-- ============================================================ -->
+
+    <!-- ONE dynamic pick-row (3 fused bricks) resting on the pallet. VIKA-6 picks
+         it, lays a course as STATIC wall bricks (lay_course.sh), then the row is
+         teleported back here for the next course. Single flat row = nothing to
+         topple (the old 3x4 stack tipped over). -->
+    <model name="row_0_0">
+      <pose>-0.6 0.3 0.144 0 0 0</pose>
+      <link name="row">
+        <inertial><pose>0 0 0.119 0 0 0</pose><mass>6.0</mass>
+          <inertia><ixx>0.06</ixx><iyy>0.7</iyy><izz>0.7</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="c"><pose>0 0 0.119 0 0 0</pose><geometry><box><size>1.155 0.25 0.238</size></box></geometry></collision>
+        <visual name="b0.385"><pose>0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b0.0"><pose>0.0 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b-0.385"><pose>-0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual>
       </link>
     </model>
-
-    <!-- TODO: spawn vika via vika_gazebo/spawn_robot.launch.py -->
-
   </world>
 </sdf>

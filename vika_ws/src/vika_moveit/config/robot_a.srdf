@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MoveIt semantic description for the LIVE robot_a (rail + 6-DOF arm + vacuum
+     gripper, xacro prefix robot_a_arm_, model name "vika").
+     Planning group = the 6 revolute arm joints only; the rail (robot_a_rail_joint,
+     prismatic) is positioned separately and read from joint_states as a passive
+     offset, matching real rail/gantry masonry robots.
+
+     NOTE: the arm uses coarse PRIMITIVE collision shapes (boxes/cylinders at the
+     joint frames) so Gazebo physics stays cheap. Those primitives overlap in
+     normal poses, which would make MoveIt flag false self-collisions and refuse
+     to plan (START_STATE_IN_COLLISION). Self-collision among the arm links is
+     therefore fully disabled here; environment collisions are handled via the
+     planning scene instead. -->
+<robot name="vika">
+
+  <group name="arm">
+    <chain base_link="robot_a_arm_base_link" tip_link="robot_a_arm_tcp"/>
+  </group>
+
+  <group name="gripper">
+    <link name="robot_a_arm_gripper_base"/>
+    <link name="robot_a_arm_suction_pad_l"/>
+    <link name="robot_a_arm_suction_pad_c"/>
+    <link name="robot_a_arm_suction_pad_r"/>
+    <link name="robot_a_arm_tcp"/>
+  </group>
+
+  <end_effector name="suction" parent_link="robot_a_arm_tool0" group="gripper"/>
+
+  <group_state name="home" group="arm">
+    <joint name="robot_a_arm_j1" value="0"/>
+    <joint name="robot_a_arm_j2" value="0"/>
+    <joint name="robot_a_arm_j3" value="0"/>
+    <joint name="robot_a_arm_j4" value="0"/>
+    <joint name="robot_a_arm_j5" value="0"/>
+    <joint name="robot_a_arm_j6" value="0"/>
+  </group_state>
+
+  <!-- All self-collision pairs disabled (coarse primitive collision model). -->
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_base_link" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_base_link" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_link1" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_rail_base" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_base_link" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_link1" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_base_link" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_base_link" link2="robot_a_arm_link1" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_base_link" link2="robot_a_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_base_link" link2="robot_a_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_base_link" link2="robot_a_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_base_link" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_base_link" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link1" link2="robot_a_arm_link2" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link1" link2="robot_a_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link1" link2="robot_a_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link1" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link1" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link2" link2="robot_a_arm_link3" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link2" link2="robot_a_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link2" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link2" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link3" link2="robot_a_arm_link4" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link3" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link3" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link4" link2="robot_a_arm_link5" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link4" link2="robot_a_arm_tool0" reason="Never"/>
+  <disable_collisions link1="robot_a_arm_link5" link2="robot_a_arm_tool0" reason="Never"/>
+</robot>

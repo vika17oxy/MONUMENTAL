@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<!-- Visual-only world coordinate triad at the origin.
+     X = red (+forward), Y = green (+left), Z = blue (+up). Each 2 m long. -->
+<sdf version="1.8">
+  <model name="world_axes">
+    <static>true</static>
+    <link name="axes">
+      <!-- X axis (red): cylinder rotated +90deg about Y, shifted +1 in X -->
+      <visual name="x_axis">
+        <pose>1 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.03</radius><length>2.0</length></cylinder></geometry>
+        <material><ambient>1 0 0 1</ambient><diffuse>1 0 0 1</diffuse><emissive>0.5 0 0 1</emissive></material>
+      </visual>
+      <visual name="x_tip">
+        <pose>2 0 0 0 1.5708 0</pose>
+        <geometry><sphere><radius>0.08</radius></sphere></geometry>
+        <material><ambient>1 0 0 1</ambient><diffuse>1 0 0 1</diffuse><emissive>0.6 0 0 1</emissive></material>
+      </visual>
+
+      <!-- Y axis (green): cylinder rotated -90deg about X, shifted +1 in Y -->
+      <visual name="y_axis">
+        <pose>0 1 0 -1.5708 0 0</pose>
+        <geometry><cylinder><radius>0.03</radius><length>2.0</length></cylinder></geometry>
+        <material><ambient>0 1 0 1</ambient><diffuse>0 1 0 1</diffuse><emissive>0 0.5 0 1</emissive></material>
+      </visual>
+      <visual name="y_tip">
+        <pose>0 2 0 0 0 0</pose>
+        <geometry><sphere><radius>0.08</radius></sphere></geometry>
+        <material><ambient>0 1 0 1</ambient><diffuse>0 1 0 1</diffuse><emissive>0 0.6 0 1</emissive></material>
+      </visual>
+
+      <!-- Z axis (blue): vertical cylinder, shifted +1 in Z -->
+      <visual name="z_axis">
+        <pose>0 0 1 0 0 0</pose>
+        <geometry><cylinder><radius>0.03</radius><length>2.0</length></cylinder></geometry>
+        <material><ambient>0 0 1 1</ambient><diffuse>0 0 1 1</diffuse><emissive>0 0 0.5 1</emissive></material>
+      </visual>
+      <visual name="z_tip">
+        <pose>0 0 2 0 0 0</pose>
+        <geometry><sphere><radius>0.08</radius></sphere></geometry>
+        <material><ambient>0 0 1 1</ambient><diffuse>0 0 1 1</diffuse><emissive>0 0 0.6 1</emissive></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

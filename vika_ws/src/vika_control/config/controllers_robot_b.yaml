@@ -1,6 +1,11 @@
-controller_manager:
+# Controllers for robot_b (cement nozzle). Keys are namespaced with /robot_b/
+# so the params match the namespaced nodes gz_ros2_control creates. Without the
+# namespace prefix the controller_manager reports "'type' param was not defined".
+/robot_b/controller_manager:
   ros__parameters:
     update_rate: 100
+    # See controllers_robot_a.yaml: stiffen the gz_ros2_control position P gain.
+    position_proportional_gain: 25.0
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -8,7 +13,13 @@ controller_manager:
     arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
-arm_controller:
+    rail_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    cement_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+/robot_b/arm_controller:
   ros__parameters:
     joints:
       - robot_b_arm_j1
@@ -17,5 +28,19 @@ arm_controller:
       - robot_b_arm_j4
       - robot_b_arm_j5
       - robot_b_arm_j6
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/robot_b/rail_controller:
+  ros__parameters:
+    joints:
+      - robot_b_rail_joint
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/robot_b/cement_controller:
+  ros__parameters:
+    joints:
+      - robot_b_arm_cement_angle
     command_interfaces: [position]
     state_interfaces: [position, velocity]

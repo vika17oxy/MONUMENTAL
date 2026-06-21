@@ -30,7 +30,13 @@
     0 4px 10px -2px rgba(0,0,0,0.7);
 }
 
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;              /* the grid fills the viewport; columns scroll internally */
+  overscroll-behavior: none;     /* no iOS rubber-band / pull-to-refresh */
+  scrollbar-width: none;         /* Firefox: no scrollbars */
+}
 
 body {
   font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -42,6 +48,13 @@ body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  -webkit-touch-callout: none;   /* no long-press save/copy menu */
+}
+
+/* keep real text inputs selectable/editable */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Subtle vignette + cross-grid — reads as depth, not clutter */
@@ -170,8 +183,7 @@ body::before {
     border-color: var(--accent);
     box-shadow:
       0 1px 0 rgba(255,255,255,0.3) inset,
-      0 0 0 1px rgba(251,191,36,0.4),
-      0 4px 12px -4px var(--accent-glow);
+      0 2px 6px rgba(0,0,0,0.5);
   }
   .btn-primary:hover {
     color: #1a1200;
@@ -226,7 +238,6 @@ body::before {
   .dot { @apply inline-block h-2 w-2 rounded-full; }
   .dot-live {
     background: #f4f5f7;
-    box-shadow: 0 0 6px rgba(244,245,247,0.6);
   }
   .dot-off  { background: #525252; }
 
@@ -239,8 +250,6 @@ body::before {
   .readout-dim { color: var(--text-mute); }
 }
 
-/* Tighter scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
-::-webkit-scrollbar-track { background: transparent; }
+/* Hidden scrollbars — clean app look; scrolling still works (touch/wheel) */
+::-webkit-scrollbar { width: 0; height: 0; display: none; }
+* { scrollbar-width: none; -ms-overflow-style: none; }

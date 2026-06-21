@@ -1,6 +1,14 @@
-controller_manager:
+# Controllers for robot_a (gripper). Keys are namespaced with /robot_a/ so the
+# params match the namespaced nodes that gz_ros2_control creates
+# (/robot_a/controller_manager, /robot_a/arm_controller, ...). Without the
+# namespace prefix the controller_manager reports "'type' param was not defined".
+/robot_a/controller_manager:
   ros__parameters:
     update_rate: 100
+    # gz_ros2_control position command interface is a P controller (position
+    # error -> velocity). The default gain is too soft for this large arm, so
+    # joints lag / sag and never reach the commanded pose. Stiffen it.
+    position_proportional_gain: 25.0
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -8,7 +16,10 @@ controller_manager:
     arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
-arm_controller:
+    rail_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+/robot_a/arm_controller:
   ros__parameters:
     joints:
       - robot_a_arm_j1
@@ -17,5 +28,12 @@ arm_controller:
       - robot_a_arm_j4
       - robot_a_arm_j5
       - robot_a_arm_j6
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/robot_a/rail_controller:
+  ros__parameters:
+    joints:
+      - robot_a_rail_joint
     command_interfaces: [position]
     state_interfaces: [position, velocity]

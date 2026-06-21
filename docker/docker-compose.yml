@@ -3,6 +3,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.ros
+      # Optional AI perception add-on (Grounding DINO). Bake it permanently with:
+      #   WITH_PERCEPTION=1 docker compose -f docker/docker-compose.yml build ros
+      args:
+        WITH_PERCEPTION: "${WITH_PERCEPTION:-0}"
     image: vika/ros:jazzy
     container_name: vika_ros
     network_mode: host
@@ -32,6 +36,9 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
       - __GLX_VENDOR_LIBRARY_NAME=nvidia
+      # Fixed HuggingFace cache so a build-time-cached model is found at runtime
+      # (HOME=/tmp here) — used by the optional Grounding DINO detector.
+      - HF_HOME=/opt/hf-cache
     volumes:
       - ../vika_ws:/ws
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

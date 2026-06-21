@@ -17,14 +17,18 @@ def generate_launch_description():
     name = LaunchConfiguration('name')        # e.g. robot_a
     prefix = LaunchConfiguration('prefix')    # xacro link/joint prefix, e.g. robot_a_
     tool = LaunchConfiguration('tool')
-    x = LaunchConfiguration('x')
-    y = LaunchConfiguration('y')
+    base_x = LaunchConfiguration('base_x')
+    base_yaw = LaunchConfiguration('base_yaw')
 
     xacro = PathJoinSubstitution([
         FindPackageShare('vika_description'), 'urdf', 'vika.urdf.xacro'
     ])
+    # World placement is baked into the URDF (base_x/base_yaw), NOT the spawn
+    # pose — the world-fixed rail ignores the create -x/-y/-Y.
     desc = ParameterValue(
-        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool, ' ns:=', name, ' arm:=true']),
+        Command(['xacro ', xacro, ' prefix:=', prefix, ' tool:=', tool,
+                 ' ns:=', name, ' arm:=true',
+                 ' base_x:=', base_x, ' base_yaw:=', base_yaw]),
         value_type=str,
     )
 
@@ -39,18 +43,21 @@ def generate_launch_description():
         package='ros_gz_sim', executable='create',
         arguments=[
             '-topic', ['/', name, '/robot_description'],
-            '-name', name,
-            '-x', x, '-y', y, '-z', '0.3',
+            # gz display label (decoupled from the namespace `name`) so the model
+            # tree shows VIKA_5 / VIKA_6 while topics/TF stay robot_a/robot_b.
+            '-name', LaunchConfiguration('display'),
+            '-x', '0.0', '-y', '0.0', '-z', '0.0',
         ],
         output='screen',
     )
 
     return LaunchDescription([
         DeclareLaunchArgument('name',   default_value='robot_a'),
+        DeclareLaunchArgument('display', default_value='robot_a'),
         DeclareLaunchArgument('prefix', default_value='robot_a_'),
         DeclareLaunchArgument('tool',   default_value='gripper'),
-        DeclareLaunchArgument('x',      default_value='0.0'),
-        DeclareLaunchArgument('y',      default_value='0.0'),
+        DeclareLaunchArgument('base_x',   default_value='0.0'),
+        DeclareLaunchArgument('base_yaw', default_value='0.0'),
         rsp,
         spawn,
     ])

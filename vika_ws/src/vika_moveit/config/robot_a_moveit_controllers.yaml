@@ -1,0 +1,21 @@
+# MoveIt -> ros2_control bridge. The arm_controller (JointTrajectoryController)
+# already runs inside gz_ros2_control under the /robot_a namespace, so the
+# controller name is the ABSOLUTE action path; MoveIt sends FollowJointTrajectory
+# goals to /robot_a/arm_controller/follow_joint_trajectory.
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - /robot_a/arm_controller
+
+  /robot_a/arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+      - robot_a_arm_j1
+      - robot_a_arm_j2
+      - robot_a_arm_j3
+      - robot_a_arm_j4
+      - robot_a_arm_j5
+      - robot_a_arm_j6

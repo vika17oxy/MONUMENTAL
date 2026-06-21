@@ -12,35 +12,36 @@
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>
       </hardware>
 
-      <!-- Base drive is handled by native gz DiffDrive plugin, not ros2_control. -->
-      <!-- Arm joints are controlled through ros2_control / MoveIt. -->
+      <!-- Linear rail carriage (prismatic, world +Y). Held + commandable. -->
+      <joint name="${prefix}rail_joint">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
 
-
-      <!-- Arm -->
-      <xacro:macro name="arm_joint_ifc" params="name">
+      <!-- Arm. initial_value = a folded "stow" pose so the robots spawn compact
+           instead of both reaching toward the centre and overlapping ("kissing").
+           Matches the FOLD pose the startup script commands the controllers to. -->
+      <xacro:macro name="arm_joint_ifc" params="name init:=0.0">
         <joint name="${name}">
           <command_interface name="position"/>
           <state_interface name="position">
-            <param name="initial_value">0.0</param>
+            <param name="initial_value">${init}</param>
           </state_interface>
           <state_interface name="velocity"/>
         </joint>
       </xacro:macro>
-      <xacro:arm_joint_ifc name="${prefix}arm_j1"/>
-      <xacro:arm_joint_ifc name="${prefix}arm_j2"/>
-      <xacro:arm_joint_ifc name="${prefix}arm_j3"/>
-      <xacro:arm_joint_ifc name="${prefix}arm_j4"/>
-      <xacro:arm_joint_ifc name="${prefix}arm_j5"/>
-      <xacro:arm_joint_ifc name="${prefix}arm_j6"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j1" init="1.5708"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j2" init="0.0"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j3" init="0.6"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j4" init="0.0"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j5" init="0.0"/>
+      <xacro:arm_joint_ifc name="${prefix}arm_j6" init="0.0"/>
 
-      <!-- Gripper (only left finger has a command; right mimics via URDF) -->
-      <xacro:if value="${tool == 'gripper'}">
-        <joint name="${prefix}arm_gripper_left_finger">
-          <command_interface name="position"/>
-          <state_interface name="position"/>
-          <state_interface name="velocity"/>
-        </joint>
-      </xacro:if>
+      <!-- Vacuum suction gripper has no actuated joint (on/off suction), so it
+           contributes no ros2_control interfaces. -->
 
       <!-- Cement nozzle angle -->
       <xacro:if value="${tool == 'cement'}">

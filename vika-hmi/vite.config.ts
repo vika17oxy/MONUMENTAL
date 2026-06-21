@@ -12,5 +12,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // LAN dev server behind the firewall — allow any host so mDNS names like
+    // monumental.local / L1TE03.local work (Vite 5.4 blocks unknown hosts).
+    allowedHosts: true,
   },
 });

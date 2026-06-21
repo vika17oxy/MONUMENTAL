@@ -6,14 +6,48 @@
   gz_type_name: "gz.msgs.Clock"
   direction: GZ_TO_ROS
 
-- ros_topic_name: "/robot_a/cmd_vel"
-  gz_topic_name: "/model/robot_a/cmd_vel"
-  ros_type_name: "geometry_msgs/msg/Twist"
-  gz_type_name: "gz.msgs.Twist"
+# NOTE: the tracked mobile base (DiffDrive / cmd_vel) was replaced by a linear
+# rail. The carriage is driven through ros2_control (rail_controller), not gz
+# cmd_vel, so the cmd_vel bridges were removed.
+
+# Vacuum gripper attach/detach (gz DetachableJoint trigger topics). ONE joint for
+# the single dynamic pick-ROW row_0_0 (3 fused bricks). Empty msg attaches/detaches
+# the whole row. The wall grows as STATIC bricks (lay_course.sh), so only this one
+# dynamic row exists. ROS -> GZ.
+- ros_topic_name: "/suction/r0_0/attach"
+  gz_topic_name: "/suction/r0_0/attach"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+- ros_topic_name: "/suction/r0_0/detach"
+  gz_topic_name: "/suction/r0_0/detach"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/robot_b/cmd_vel"
-  gz_topic_name: "/model/robot_b/cmd_vel"
-  ros_type_name: "geometry_msgs/msg/Twist"
-  gz_type_name: "gz.msgs.Twist"
-  direction: ROS_TO_GZ
+# Wrist camera (robot_a gripper) — image + camera_info for the DINO brick
+# detector and the HMI wrist view. GZ -> ROS.
+- ros_topic_name: "/robot_a/wrist_cam/image"
+  gz_topic_name: "/wrist_cam"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/robot_a/wrist_cam/camera_info"
+  gz_topic_name: "/wrist_cam/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+
+# Wrist camera (robot_b cement tool) — for DINO cement-following along the wall.
+# gz scopes the sensor topic with the TOOL prefix (robot_b_arm_), so the real gz
+# topic is /robot_b_arm_wrist_cam (not /robot_b_wrist_cam).
+- ros_topic_name: "/robot_b/wrist_cam/image"
+  gz_topic_name: "/robot_b_arm_wrist_cam"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/robot_b/wrist_cam/camera_info"
+  gz_topic_name: "/robot_b_arm_wrist_cam/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS

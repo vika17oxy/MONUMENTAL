@@ -31,10 +31,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     less \
     && rm -rf /var/lib/apt/lists/*
 
+# Base python deps — lean, only what the sim / bridges / HMI-bridge need.
 RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed \
     mcp \
-    ultralytics \
     opencv-python-headless
+
+# ── OPTIONAL perception add-on (Grounding DINO brick detector) ───────────────
+# Off by default → lean base image, sim works without GPU ML. Bake it in with:
+#   docker compose build --build-arg WITH_PERCEPTION=1 ros
+# Model cache lands in HF_HOME (a fixed path, so the runtime — which sets
+# HOME=/tmp — still finds a build-time-cached model). See docker/install_perception.sh.
+ENV HF_HOME=/opt/hf-cache
+ARG WITH_PERCEPTION=0
+COPY docker/install_perception.sh /opt/install_perception.sh
+RUN if [ "$WITH_PERCEPTION" = "1" ]; then bash /opt/install_perception.sh; fi
 
 ENV GZ_PARTITION=vika
 

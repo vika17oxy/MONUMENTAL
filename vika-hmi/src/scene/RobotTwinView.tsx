@@ -1,48 +1,112 @@
 /**
- * 3D digital-twin view of the robot.
- * Loads the real STL meshes from public/meshes/arm/ and assembles them along
- * the URDF joint chain (origins/rpy from base_only.urdf.xacro).
+ * 3D digital-twin of the WHOLE cell — both robots (live from their joint_states
+ * over rosbridge), the two linear rails, the pallet and the brick row.
  *
- * URDF coordinate convention is Z-up; we wrap the whole robot in a -90° X
- * rotation to convert to three.js's Y-up. STL units are mm, scaled to m
- * via mesh.scale = 0.001.
- *
- * Joint angles j1..j6 are animated as a smooth idle motion.
+ * STL meshes are assembled along the URDF joint chain (origins from the xacro).
+ * URDF is Z-up; each robot is wrapped in a -90° X rotation to convert to
+ * three.js Y-up. World layout mapping used here (Z-up world -> three.js Y-up):
+ *   three.js X = world X,  three.js Y = world Z (up),  three.js Z = -world Y.
  */
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls, Grid, ContactShadows, Environment, Text } from '@react-three/drei';
-import { ReactNode, Suspense, useMemo, useRef } from 'react';
+import { OrbitControls, Grid, ContactShadows, Environment, Text, Line, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
+import { ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import ROSLIB from 'roslib';
 import { useRos } from '../ros/RosContext';
 
+// ── Satellite ground (ESRI World Imagery) — the construction site under the robots
+const SITE = { lat: 48.23986680047265, lon: 16.377095507156092 };
+const SAT_Z = 20;          // tile zoom (max ESRI detail ≈ 0.1 m/px)
+const SAT_N = 3;           // n×n tile mosaic
+const ESRI = (z: number, x: number, y: number) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+const lon2tileX = (lon: number, z: number) => ((lon + 180) / 360) * 2 ** z;
+const lat2tileY = (lat: number, z: number) => {
+  const r = (lat * Math.PI) / 180;
+  return ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z;
+};
+const metersPerPixel = (z: number, lat: number) =>
+  (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** z;
+
+/** Build a CanvasTexture from an n×n ESRI tile mosaic centred on the site, plus
+ *  the world-metre offset that puts the site at the scene origin. */
+function useSatelliteGround() {
+  const [data, setData] = useState<{ tex: THREE.Texture; size: number; ox: number; oz: number } | null>(null);
+  useEffect(() => {
+    const z = SAT_Z, n = SAT_N;
+    const cx = lon2tileX(SITE.lon, z), cy = lat2tileY(SITE.lat, z);
+    const x0 = Math.floor(cx) - Math.floor(n / 2), y0 = Math.floor(cy) - Math.floor(n / 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = n * 256;
+    const ctx = canvas.getContext('2d')!;
+    let loaded = 0;
+    const finish = () => {
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const mpp = metersPerPixel(z, SITE.lat);
+      const size = n * 256 * mpp;
+      // site pixel within the canvas → world offset so the site sits at origin
+      const sitePxX = (cx - x0) * 256, sitePxY = (cy - y0) * 256;
+      const ox = (n * 128 - sitePxX) * mpp;
+      const oz = (sitePxY - n * 128) * mpp;
+      setData({ tex, size, ox, oz });
+    };
+    for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { ctx.drawImage(img, i * 256, k * 256); if (++loaded === n * n) finish(); };
+      img.onerror = () => { if (++loaded === n * n) finish(); };
+      img.src = ESRI(z, x0 + i, y0 + k);
+    }
+  }, []);
+  return data;
+}
+
 const ACCENT = '#fbbf24';
+const BLACK = '#0c0d0f';
+const BLACK_GLOSS = '#15171a';
+const RAIL_GREY = '#40404a';      // URDF rail_grey
+const CARRIAGE = '#2e2e34';       // URDF carriage_dark
+const CEMENT_RED = '#b3261a';     // URDF tool_red
+
+// World layout baked into the URDF (see base_rail.xacro / full_demo.launch.py):
+//   robot_a (VIKA-6, gripper) base_x=-2.0  yaw=0      robot_b (VIKA-5, cement) base_x=+0.8 yaw=π
+// Rail beam: 0.25×12.5×0.12 box centred at world (base_x, +4, 0.15); carriage
+// 0.9×0.9×0.18 at world z=0.30; arm mounts at world z=0.39.  (world z -> three.js y)
+const RAIL_LEN = 12.5;
+const RAIL_CZ = -4;               // three.js z = -world y(+4)
+const BASE_Y = 0.39;              // arm base height (carriage top)
 
 const MESH = {
-  base: '/meshes/arm/base.stl',
-  link1: '/meshes/arm/link1.stl',
-  link2: '/meshes/arm/link2.stl',
-  link3: '/meshes/arm/link3.stl',
-  link4: '/meshes/arm/link4.stl',
-  link5: '/meshes/arm/link5.stl',
-  link6: '/meshes/arm/link6.stl',
-  gripper: '/meshes/arm/gripper.stl',
+  base: '/meshes/arm/base.stl', link1: '/meshes/arm/link1.stl', link2: '/meshes/arm/link2.stl',
+  link3: '/meshes/arm/link3.stl', link4: '/meshes/arm/link4.stl', link5: '/meshes/arm/link5.stl',
+  link6: '/meshes/arm/link6.stl', gripper: '/meshes/arm/gripper.stl',
 };
 
-// STL-Loader-Wrapper — mm → m via geometry scale.
-// Children may be a render-fn receiving the bbox so decals can be placed on
-// the actual mesh surface (the STL origin is usually NOT the geometric center).
-function StlLink({
-  url,
-  color,
-  metalness = 0.5,
-  roughness = 0.45,
-  children,
-}: {
-  url: string;
-  color: string;
-  metalness?: number;
-  roughness?: number;
+type JMap = Record<string, number>;
+
+/** Subscribe to one robot's /joint_states; returns a live-updating ref. */
+function useRobotJoints(id: 'robot_a' | 'robot_b') {
+  const { ros } = useRos();
+  const ref = useRef<JMap>({});
+  useEffect(() => {
+    if (!ros) return;
+    const t = new ROSLIB.Topic({
+      ros, name: `/${id}/joint_states`, messageType: 'sensor_msgs/JointState', throttle_rate: 33,
+    });
+    t.subscribe((m: any) => {
+      const names: string[] = m.name ?? [], pos: number[] = m.position ?? [];
+      for (let i = 0; i < names.length; i++) ref.current[names[i]] = pos[i];
+    });
+    return () => t.unsubscribe();
+  }, [ros, id]);
+  return ref;
+}
+
+function StlLink({ url, color, metalness = 0.5, roughness = 0.45, children }: {
+  url: string; color: string; metalness?: number; roughness?: number;
   children?: ReactNode | ((bbox: THREE.Box3) => ReactNode);
 }) {
   const raw = useLoader(STLLoader, url);
@@ -63,139 +127,113 @@ function StlLink({
   );
 }
 
-const BLACK = '#0c0d0f';
-const BLACK_GLOSS = '#15171a';
-const DARK = '#1a1c20';
+const E = (r: number, p: number, y: number) => new THREE.Euler(r, p, y, 'ZYX');
 
-// Robot URDF chain (joint origins copied verbatim from base_only.urdf.xacro)
-function Robot() {
-  const j1 = useRef<THREE.Group>(null!);
-  const j2 = useRef<THREE.Group>(null!);
-  const j3 = useRef<THREE.Group>(null!);
-  const j4 = useRef<THREE.Group>(null!);
-  const j5 = useRef<THREE.Group>(null!);
-  const j6 = useRef<THREE.Group>(null!);
+/** Cement nozzle tool (VIKA-5) — red base + thin nozzle (tool_cement.xacro).
+ *  Mounted in the tool0 frame; the tool extends along tool0 +Z toward the work. */
+function CementTool() {
+  return (
+    <group>
+      {/* cement_base: cyl r0.04 l0.08, centre z=0.08 from tool0 */}
+      <mesh position={[0, 0, 0.08]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.04, 0.04, 0.08, 24]} />
+        <meshStandardMaterial color={CEMENT_RED} metalness={0.25} roughness={0.6} />
+      </mesh>
+      {/* nozzle: cyl r0.015 l0.08, centre z=0.16 */}
+      <mesh position={[0, 0, 0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.015, 0.015, 0.08, 16]} />
+        <meshStandardMaterial color={CEMENT_RED} metalness={0.25} roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
 
-  const { jointsRef, connected } = useRos();
+/** Vacuum suction gripper (VIKA-6) — wide bar + 3 round pads, one per brick
+ *  (tool_gripper.xacro). Mounted in the tool0 frame; pads face tool0 +Z. */
+function GripperTool() {
+  return (
+    <group>
+      {/* mounting bar: 0.34(X) × 0.95(Y) × 0.04(Z), centre z=0.04 from tool0 */}
+      <mesh position={[0, 0, 0.04]} castShadow receiveShadow>
+        <boxGeometry args={[0.34, 0.95, 0.04]} />
+        <meshStandardMaterial color="#66666f" metalness={0.5} roughness={0.5} />
+      </mesh>
+      {/* 3 suction pads: cyl r0.09 l0.04 along Z, at y = 0, ±0.375, z=0.08 */}
+      {[-0.375, 0, 0.375].map((y) => (
+        <mesh key={y} position={[0, y, 0.08]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.09, 0.09, 0.04, 28]} />
+          <meshStandardMaterial color="#1f1f24" metalness={0.4} roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
 
-  useFrame((s) => {
-    // When ROS is connected, mirror the live joint state. Otherwise idle-anim.
-    if (connected) {
-      const j = jointsRef.current;
-      if (j1.current && j.j1 !== undefined) j1.current.rotation.z = j.j1;
-      if (j2.current && j.j2 !== undefined) j2.current.rotation.z = j.j2;
-      if (j3.current && j.j3 !== undefined) j3.current.rotation.z = j.j3;
-      if (j4.current && j.j4 !== undefined) j4.current.rotation.z = j.j4;
-      if (j5.current && j.j5 !== undefined) j5.current.rotation.z = j.j5;
-      if (j6.current && j.j6 !== undefined) j6.current.rotation.z = j.j6;
-      return;
-    }
-    const t = s.clock.elapsedTime;
-    if (j1.current) j1.current.rotation.z = Math.sin(t * 0.25) * 0.6;
-    if (j2.current) j2.current.rotation.z = Math.sin(t * 0.3 + 1.2) * 0.4;
-    if (j3.current) j3.current.rotation.z = Math.sin(t * 0.35 + 2.0) * 0.5;
-    if (j4.current) j4.current.rotation.z = Math.sin(t * 0.45 + 0.8) * 0.6;
-    if (j5.current) j5.current.rotation.z = Math.sin(t * 0.5 + 1.7) * 0.7;
-    if (j6.current) j6.current.rotation.z = t * 0.6;
+/** One robot — URDF chain driven live 1:1 from `/${id}/joint_states` (rail slide
+ *  + 6 arm joints). No data → holds the rest pose (no idle animation). */
+function Robot({ id, joints, baseX, yaw = 0, tool = 'gripper', decal = true }: {
+  id: 'robot_a' | 'robot_b'; joints: React.MutableRefObject<JMap>; baseX: number;
+  yaw?: number; tool?: 'gripper' | 'cement'; decal?: boolean;
+}) {
+  const slide = useRef<THREE.Group>(null!);
+  const j1 = useRef<THREE.Group>(null!), j2 = useRef<THREE.Group>(null!), j3 = useRef<THREE.Group>(null!);
+  const j4 = useRef<THREE.Group>(null!), j5 = useRef<THREE.Group>(null!), j6 = useRef<THREE.Group>(null!);
+
+  useFrame(() => {
+    const j = joints.current;
+    // rail slide: world +Y travel = cos(yaw)*rail → three.js z = −worldY
+    const rail = j[`${id}_rail_joint`];
+    if (slide.current && rail !== undefined) slide.current.position.z = -Math.cos(yaw) * rail;
+    const g = (n: number) => j[`${id}_arm_j${n}`];
+    if (g(1) === undefined) return;              // no data yet → keep rest pose
+    if (j1.current) j1.current.rotation.z = g(1);
+    if (j2.current) j2.current.rotation.z = g(2);
+    if (j3.current) j3.current.rotation.z = g(3);
+    if (j4.current) j4.current.rotation.z = g(4);
+    if (j5.current) j5.current.rotation.z = g(5);
+    if (j6.current) j6.current.rotation.z = g(6);
   });
 
-  // RPY in URDF → three.js Euler order 'ZYX' so R = Rz·Ry·Rx
-  const E = (r: number, p: number, y: number) => new THREE.Euler(r, p, y, 'ZYX');
-
   return (
-    // Z-up (URDF) → Y-up (three.js)
-    <group rotation={[-Math.PI / 2, 0, 0]}>
-      {/* base_link at world origin */}
+    <group ref={slide} position={[baseX, 0, 0]}>
+      <Carriage x={0} />
+      <group position={[0, BASE_Y, 0]} rotation={[0, yaw, 0]}>
+       <group rotation={[-Math.PI / 2, 0, 0]}>
       <StlLink url={MESH.base} color={BLACK} />
-
-      {/* j1: pos (0,0,0.175), rpy (0,0,1.5152), axis Z */}
       <group position={[0, 0, 0.175]} rotation={E(0, 0, 1.5152)}>
         <group ref={j1}>
           <StlLink url={MESH.link1} color={BLACK_GLOSS} metalness={0.55} roughness={0.35} />
-
-          {/* j2: pos (0.1038,-0.4023,0.2912), rpy (π/2, 0, -π/2), axis Z */}
           <group position={[0.1038, -0.4023, 0.2912]} rotation={E(1.5708, 0, -1.5708)}>
             <group ref={j2}>
               <StlLink url={MESH.link2} color={BLACK_GLOSS} metalness={0.55} roughness={0.35}>
                 {(bbox) => {
-                  // Place the decal on the actual mesh surface — link2's STL
-                  // origin is not at the geometric center, so we need the bbox
-                  // to find the real ±Z faces.
-                  const cx = (bbox.min.x + bbox.max.x) / 2;
-                  const cy = (bbox.min.y + bbox.max.y) / 2;
-                  const zFront = bbox.max.z - 0.028;
-                  const zBack = bbox.min.z + 0.028;
+                  if (!decal) return null;
+                  const cx = (bbox.min.x + bbox.max.x) / 2, cy = (bbox.min.y + bbox.max.y) / 2;
                   return (
                     <>
-                      <Text
-                        position={[cx, cy, zFront]}
-                        rotation={[0, 0, -Math.PI / 2]}
-                        fontSize={0.18}
-                        letterSpacing={0.02}
-                        color="#ffffff"
-                        anchorX="center"
-                        anchorY="middle"
-                        outlineWidth={0.004}
-                        outlineColor="#000000"
-                        material-toneMapped={false}
-                      >
-                        V.I.K.A
-                      </Text>
-                      <Text
-                        position={[cx, cy, zBack]}
-                        rotation={[0, Math.PI, -Math.PI / 2]}
-                        fontSize={0.18}
-                        letterSpacing={0.02}
-                        color="#ffffff"
-                        anchorX="center"
-                        anchorY="middle"
-                        outlineWidth={0.004}
-                        outlineColor="#000000"
-                        material-toneMapped={false}
-                      >
-                        V.I.K.A
-                      </Text>
+                      <Text position={[cx, cy, bbox.max.z - 0.028]} rotation={[0, 0, -Math.PI / 2]} fontSize={0.18}
+                        color="#fff" anchorX="center" anchorY="middle" outlineWidth={0.004} outlineColor="#000" material-toneMapped={false}>V.I.K.A</Text>
+                      <Text position={[cx, cy, bbox.min.z + 0.028]} rotation={[0, Math.PI, -Math.PI / 2]} fontSize={0.18}
+                        color="#fff" anchorX="center" anchorY="middle" outlineWidth={0.004} outlineColor="#000" material-toneMapped={false}>V.I.K.A</Text>
                     </>
                   );
                 }}
               </StlLink>
-
-              {/* j3: pos (0,1.300,0), rpy (0,0,-0.2221), axis Z */}
               <group position={[0, 1.3, 0]} rotation={E(0, 0, -0.2221)}>
                 <group ref={j3}>
                   <StlLink url={MESH.link3} color={BLACK_GLOSS} metalness={0.55} roughness={0.35} />
-
-                  {/* j4: pos (0.1600, 0.2369, 0.0003), rpy (1.5708, 0.9923, 1.5708) */}
-                  <group
-                    position={[0.16, 0.2369, 0.0003]}
-                    rotation={E(1.5708, 0.9923, 1.5708)}
-                  >
+                  <group position={[0.16, 0.2369, 0.0003]} rotation={E(1.5708, 0.9923, 1.5708)}>
                     <group ref={j4}>
                       <StlLink url={MESH.link4} color={BLACK_GLOSS} metalness={0.55} roughness={0.35} />
-
-                      {/* j5: pos (-0.0860, 0, 1.3050), rpy (1.5708, -1.3556, -1.5708) */}
-                      <group
-                        position={[-0.086, 0, 1.305]}
-                        rotation={E(1.5708, -1.3556, -1.5708)}
-                      >
+                      <group position={[-0.086, 0, 1.305]} rotation={E(1.5708, -1.3556, -1.5708)}>
                         <group ref={j5}>
                           <StlLink url={MESH.link5} color={BLACK_GLOSS} metalness={0.55} roughness={0.35} />
-
-                          {/* j6: pos (0.1600, 0, -0.0850), rpy (-1.5708, 1.3440, -1.5708) */}
-                          <group
-                            position={[0.16, 0, -0.085]}
-                            rotation={E(-1.5708, 1.344, -1.5708)}
-                          >
+                          <group position={[0.16, 0, -0.085]} rotation={E(-1.5708, 1.344, -1.5708)}>
                             <group ref={j6}>
                               <StlLink url={MESH.link6} color={BLACK_GLOSS} metalness={0.6} roughness={0.3} />
-
-                              {/* tool0 → gripper: pos (0,0,0.020), rpy (-π, 0, -0.7298) */}
-                              <group
-                                position={[0, 0, 0.02]}
-                                rotation={E(-3.1416, 0, -0.7298)}
-                              >
-                                <StlLink url={MESH.gripper} color={DARK} metalness={0.7} roughness={0.4} />
-                              </group>
+                              {/* URDF tools mount at tool0 (= this j6 frame) with no
+                                  extra rotation — the old gripper.stl needed one. */}
+                              {tool === 'cement' ? <CementTool /> : <GripperTool />}
                             </group>
                           </group>
                         </group>
@@ -208,31 +246,107 @@ function Robot() {
           </group>
         </group>
       </group>
+       </group>
+       </group>
+      </group>
+  );
+}
+
+/** A linear rail beam (URDF base_rail): 0.25×0.12×12.5 grey box along world +Y
+ *  (three.js −Z), centred at world y=+4.  Carriage block rides on top. */
+function Rail({ x }: { x: number }) {
+  return (
+    <mesh position={[x, 0.15, RAIL_CZ]} castShadow receiveShadow>
+      <boxGeometry args={[0.25, 0.12, RAIL_LEN]} />
+      <meshStandardMaterial color={RAIL_GREY} metalness={0.35} roughness={0.65} />
+    </mesh>
+  );
+}
+
+/** The prismatic carriage (base_link): 0.9×0.18×0.9 dark slider, top at world
+ *  z=0.39 so the arm base sits squarely on it. */
+function Carriage({ x, z = 0 }: { x: number; z?: number }) {
+  return (
+    <mesh position={[x, 0.30, z]} castShadow receiveShadow>
+      <boxGeometry args={[0.9, 0.18, 0.9]} />
+      <meshStandardMaterial color={CARRIAGE} metalness={0.4} roughness={0.55} />
+    </mesh>
+  );
+}
+
+/** Euro pallet + the full 3(Y)×4(Z)×3(X) pick-brick stack, at the real sim world
+ *  positions (construction_site.sdf / reset_bricks.sh).
+ *  world (x, y) -> three.js (x, -y); world z (up) -> three.js y. */
+function PalletAndBricks() {
+  const RY = [0.04, 0.30, 0.56];          // 3 rows along world Y
+  const RX = [-0.985, -0.6, -0.215];      // 3 bricks per row along world X (centre -0.6 ± 0.385)
+  const BH = 0.238, BASE_Z = 0.144;       // brick height; pallet top / first course base
+  const bricks: ReactNode[] = [];
+  RY.forEach((wy, yi) =>
+    [0, 1, 2, 3].forEach((zi) =>
+      RX.forEach((wx, xi) => {
+        const cy = BASE_Z + zi * BH + BH / 2;   // brick centre (world z)
+        bricks.push(
+          <mesh key={`${yi}-${zi}-${xi}`} position={[wx, cy, -wy]} castShadow receiveShadow>
+            <boxGeometry args={[0.375, BH, 0.25]} />
+            <meshStandardMaterial color="#e0331e" roughness={0.85} />
+          </mesh>,
+        );
+      }),
+    ),
+  );
+  return (
+    <group>
+      {/* euro pallet (1.2 × 0.8 × 0.144), top at world z=0.144, centred under the stack */}
+      <mesh position={[-0.6, 0.072, -0.30]} castShadow receiveShadow>
+        <boxGeometry args={[1.2, 0.144, 0.8]} />
+        <meshStandardMaterial color="#7a5a34" roughness={0.9} />
+      </mesh>
+      {bricks}
     </group>
   );
 }
 
-function PalletAndBricks() {
-  const bricks = [
-    [1.3, 0.05, -0.3],
-    [1.3, 0.05, 0.0],
-    [1.3, 0.05, 0.3],
-    [1.55, 0.05, -0.15],
-    [1.55, 0.05, 0.15],
-  ] as const;
+function Cell() {
+  const ja = useRobotJoints('robot_a');
+  const jb = useRobotJoints('robot_b');
   return (
     <group>
-      <mesh position={[1.4, 0.02, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.7, 0.04, 0.8]} />
-        <meshStandardMaterial color="#5a4a32" roughness={0.9} />
-      </mesh>
-      {bricks.map((p, i) => (
-        <mesh key={i} position={p as unknown as [number, number, number]} castShadow>
-          <boxGeometry args={[0.21, 0.06, 0.1]} />
-          <meshStandardMaterial color="#a04030" roughness={0.85} />
-        </mesh>
-      ))}
+      {/* world layout from the URDF: rail_a x=-2 (yaw 0), rail_b x=+0.8 (yaw π).
+          Each Robot carries its own carriage and slides along its rail live. */}
+      <Rail x={-2} />
+      <Rail x={0.8} />
+      <Robot id="robot_a" joints={ja} baseX={-2} yaw={0} tool="gripper" />
+      <Robot id="robot_b" joints={jb} baseX={0.8} yaw={Math.PI} tool="cement" decal={false} />
+      <PalletAndBricks />
     </group>
+  );
+}
+
+/** Satellite-imagery ground plane (ESRI), centred so the site is at the origin. */
+function SatelliteGround() {
+  const sat = useSatelliteGround();
+  if (!sat) {
+    return (
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 80]} />
+        <meshStandardMaterial color="#3a3f46" roughness={0.85} metalness={0.05} />
+      </mesh>
+    );
+  }
+  return (
+    <>
+      {/* large dim base so the world extends beyond the imagery */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshStandardMaterial color="#2b2f35" roughness={0.95} />
+      </mesh>
+      {/* the satellite tile mosaic */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[sat.ox, 0, sat.oz]} receiveShadow>
+        <planeGeometry args={[sat.size, sat.size]} />
+        <meshStandardMaterial map={sat.tex} roughness={0.95} metalness={0} />
+      </mesh>
+    </>
   );
 }
 
@@ -245,70 +359,86 @@ function LoadingFallback() {
   );
 }
 
-export function RobotTwinView() {
+/** The drawn wall plan: amber polyline + vertex markers on the ground. */
+function Wall({ points }: { points: [number, number][] }) {
+  if (!points.length) return null;
+  const pts3 = points.map(([x, z]) => [x, 0.06, z] as [number, number, number]);
   return (
-    <Canvas shadows camera={{ position: [3.5, 2.6, 3.5], fov: 45 }} gl={{ antialias: true }}>
-      <color attach="background" args={['#1a1d21']} />
-      <fog attach="fog" args={['#1a1d21', 10, 28]} />
+    <group>
+      {points.length >= 2 && <Line points={pts3} color={ACCENT} lineWidth={3} />}
+      {pts3.map((p, i) => (
+        <mesh key={i} position={p}>
+          <sphereGeometry args={[0.09, 16, 16]} />
+          <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={0.5} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
 
-      <ambientLight intensity={0.18} />
-      {/* Soft fill from one side so the black robot keeps definition */}
-      <directionalLight position={[-3, 4, -2]} intensity={0.25} color={ACCENT} />
+const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
-      {/* Hero spotlight on the robot */}
-      <spotLight
-        position={[2.5, 7, 2.5]}
-        angle={0.45}
-        penumbra={0.55}
-        intensity={70}
-        distance={20}
-        decay={1.6}
-        color="#ffffff"
-        target-position={[0, 1.0, 0]}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0005}
-        shadow-camera-near={1}
-        shadow-camera-far={20}
-      />
+/** Combined site view: satellite ground + live 3D robots, with a 2D/3D camera
+ *  toggle, zoom (orbit), and a draw-a-line wall planner that publishes /hmi/wall. */
+export function RobotTwinView() {
+  const { sendWall } = useRos();
+  const [mode2d, setMode2d] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [wall, setWall] = useState<[number, number][]>([]);
 
-      <Environment preset="warehouse" environmentIntensity={0.35} />
+  const clearWall = () => { setWall([]); sendWall([]); };
+  // three.js z = -world y, so map back to world (x, y) for the robot/BT
+  const commitWall = () => sendWall(wall.map(([x, z]) => [r3(x), r3(-z)]));
 
-      {/* Gray floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[60, 60]} />
-        <meshStandardMaterial color="#3a3f46" roughness={0.85} metalness={0.05} />
-      </mesh>
+  return (
+    <div className="relative h-full w-full">
+      <Canvas shadows gl={{ antialias: true }}>
+        <color attach="background" args={['#1a1d21']} />
+        <fog attach="fog" args={['#1a1d21', 16, 70]} />
+        {mode2d
+          ? <OrthographicCamera makeDefault position={[0, 40, 0.01]} zoom={42} near={0.1} far={200} />
+          : <PerspectiveCamera makeDefault position={[4.5, 3.4, 5.2]} fov={42} near={0.1} far={200} />}
+        <ambientLight intensity={mode2d ? 0.55 : 0.2} />
+        <directionalLight position={[-3, 4, -2]} intensity={0.25} color={ACCENT} />
+        <spotLight position={[2.5, 8, 3]} angle={0.6} penumbra={0.55} intensity={90} distance={26} decay={1.5}
+          color="#ffffff" target-position={[0, 0.6, 0]} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} />
+        <Environment preset="warehouse" environmentIntensity={0.35} />
 
-      <Grid
-        args={[40, 40]}
-        cellSize={0.5}
-        cellThickness={0.6}
-        cellColor="#2a323d"
-        sectionSize={2.5}
-        sectionThickness={1}
-        sectionColor={ACCENT}
-        fadeDistance={18}
-        fadeStrength={1.5}
-        infiniteGrid
-        position={[0, 0.002, 0]}
-      />
+        <Suspense fallback={null}><SatelliteGround /></Suspense>
+        <Grid args={[40, 40]} cellSize={1} cellThickness={0.5} cellColor="#ffffff"
+          sectionSize={5} sectionThickness={0.8} sectionColor={ACCENT} fadeDistance={mode2d ? 60 : 20} fadeStrength={2}
+          infiniteGrid position={[0, 0.004, 0]} />
+        <ContactShadows position={[0, 0.006, 0]} opacity={0.45} blur={2} scale={12} far={3} />
 
-      <ContactShadows position={[0, 0.005, 0]} opacity={0.55} blur={2} scale={8} far={3} />
+        <Suspense fallback={<LoadingFallback />}><Cell /></Suspense>
+        <Wall points={wall} />
 
-      <Suspense fallback={<LoadingFallback />}>
-        <Robot />
-      </Suspense>
-      <PalletAndBricks />
+        {/* click-catcher (only while drawing): a click adds a wall vertex; drags
+            still orbit/pan because OrbitControls listens on the canvas DOM */}
+        {drawing && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}
+            onClick={(e) => { e.stopPropagation(); setWall((w) => [...w, [e.point.x, e.point.z]]); }}>
+            <planeGeometry args={[200, 200]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        )}
 
-      <OrbitControls
-        target={[0, 1.0, 0]}
-        minDistance={1.5}
-        maxDistance={12}
-        maxPolarAngle={Math.PI / 2 - 0.05}
-        enableDamping
-        dampingFactor={0.08}
-      />
-    </Canvas>
+        <OrbitControls target={[0, mode2d ? 0 : 0.8, 0]} minDistance={2} maxDistance={mode2d ? 90 : 20}
+          enableRotate={!mode2d} maxPolarAngle={Math.PI / 2 - 0.05} enableDamping dampingFactor={0.08} />
+      </Canvas>
+
+      {/* overlay controls */}
+      <div className="absolute right-3 top-3 z-10 flex gap-1.5">
+        <button onClick={() => setMode2d((v) => !v)} className="btn px-3 py-1.5 text-[11px]">{mode2d ? '◆ 3D' : '◰ 2D'}</button>
+        <button onClick={() => setDrawing((v) => !v)} className={`btn px-3 py-1.5 text-[11px] ${drawing ? 'btn-primary' : ''}`}>✎ Wall</button>
+        <button onClick={commitWall} disabled={wall.length < 2} className="btn px-3 py-1.5 text-[11px] disabled:opacity-30">✓ Plan</button>
+        <button onClick={clearWall} disabled={!wall.length} className="btn btn-danger px-2 py-1.5 text-[11px] disabled:opacity-30">✕</button>
+      </div>
+      {drawing && (
+        <div className="absolute bottom-3 left-3 z-10 rounded-sm bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wider text-accent">
+          click ground to add wall points · {wall.length} set
+        </div>
+      )}
+    </div>
   );
 }

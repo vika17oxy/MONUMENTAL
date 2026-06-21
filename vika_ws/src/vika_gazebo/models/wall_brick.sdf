@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!-- A single static masonry brick, spawned by lay_course.sh as VIKA-6 builds the
+     wall course by course (the dynamic pick bricks cycle back to the pallet). -->
+<sdf version="1.7">
+  <model name="wall_brick">
+    <static>true</static>
+    <link name="link">
+      <visual name="v">
+        <geometry><box><size>0.375 0.25 0.238</size></box></geometry>
+        <material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material>
+      </visual>
+      <collision name="c">
+        <geometry><box><size>0.375 0.25 0.238</size></box></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

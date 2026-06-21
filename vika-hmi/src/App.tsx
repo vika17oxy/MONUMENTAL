@@ -1,22 +1,22 @@
 import { useState } from 'react';
 import { RosProvider } from './ros/RosContext';
-import { TcpJogPanel } from './panels/TcpJogPanel';
+import { ControlPanel } from './panels/ControlPanel';
+import { TouchJoysticks } from './panels/TouchJoysticks';
+import { GamepadControl } from './input/GamepadControl';
+import { WristView } from './panels/WristView';
 import { MissionPanel } from './panels/MissionPanel';
-import { RobotSelector } from './panels/RobotSelector';
-import { SensorPanel } from './panels/SensorPanel';
-import { TeleopPanel } from './panels/TeleopPanel';
-import { WorldPromptPanel } from './panels/WorldPromptPanel';
-import { SatelliteMockView } from './scene/SatelliteMockView';
+import { PromptCard } from './panels/PromptCard';
 import { RobotTwinView } from './scene/RobotTwinView';
+import { BehaviorTreeView } from './scene/BehaviorTreeView';
 
-type View = 'map' | 'twin';
+type View = 'site' | 'bt';
 
 export default function App() {
-  const [view, setView] = useState<View>('map');
+  const [view, setView] = useState<View>('site');
 
   return (
-    <RosProvider url="ws://localhost:9090">
-      <div className="grid h-full grid-cols-[380px_1fr_420px] grid-rows-[auto_1fr_auto] gap-3 p-3">
+    <RosProvider url={`ws://${location.hostname}:9090`}>
+      <div className="grid h-full grid-cols-[380px_1fr_420px] grid-rows-[auto_1fr] gap-3 p-3">
         {/* === TOP BAR === */}
         <header className="col-span-3 flex items-center gap-4 panel px-5 py-3">
           <div className="flex items-center gap-3">
@@ -43,77 +43,66 @@ export default function App() {
             <span className="text-[10px] uppercase tracking-[0.25em] text-white/35">View</span>
             <div className="flex border border-white/15">
               <button
-                onClick={() => setView('map')}
+                onClick={() => setView('site')}
                 className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-colors ${
-                  view === 'map'
+                  view === 'site'
                     ? 'bg-accent text-black font-bold'
                     : 'text-white/55 hover:text-white hover:bg-white/5'
                 }`}
                 style={{ minHeight: 32 }}
               >
-                ◰ Map 2D
+                ◆ Site
               </button>
               <button
-                onClick={() => setView('twin')}
+                onClick={() => setView('bt')}
                 className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] border-l border-white/15 transition-colors ${
-                  view === 'twin'
+                  view === 'bt'
                     ? 'bg-accent text-black font-bold'
                     : 'text-white/55 hover:text-white hover:bg-white/5'
                 }`}
                 style={{ minHeight: 32 }}
               >
-                ◆ Twin 3D
+                ⌗ BT
               </button>
             </div>
           </div>
 
-          <div className="ml-auto">
-            <RobotSelector />
-          </div>
         </header>
 
-        {/* === LEFT COLUMN === */}
+        {/* === LEFT COLUMN: operator controls + wrist cam === */}
+        {/* end the scroll area above the corner touch joysticks (no overlap) */}
         <aside className="flex flex-col gap-3 overflow-y-auto pr-1">
-          <TcpJogPanel />
-          <TeleopPanel />
-          <MissionPanel />
+          <ControlPanel />
+          <WristView />
         </aside>
 
         {/* === CENTER: SCENE === */}
         <main className="panel relative overflow-hidden">
           <span className="corner-tl" />
           <span className="corner-br" />
-          <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-white/60">
-            <span className="stencil">{view === 'map' ? 'MAP' : 'TWIN'}</span>
-            <span>{view === 'map' ? 'Satellite · Site Survey' : 'Robot · Digital Twin'}</span>
-          </div>
-          <div className="pointer-events-none absolute right-3 top-3 z-10 text-[10px] uppercase tracking-[0.25em] text-white/60">
-            <span className="readout">X 0.000</span>
-            <span className="mx-2 text-white/20">|</span>
-            <span className="readout">Y 0.000</span>
-            <span className="mx-2 text-white/20">|</span>
-            <span className="readout">Z 0.000</span>
-          </div>
+          {view === 'site' && (
+            <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-white/60">
+              <span className="stencil">SITE</span>
+              <span>Satellite · Live 3D · Wall planner</span>
+            </div>
+          )}
           <div className="absolute inset-0">
-            {view === 'map' ? <SatelliteMockView /> : <RobotTwinView />}
+            {view === 'site' ? <RobotTwinView /> : <BehaviorTreeView />}
           </div>
+          {/* DJI-style joysticks float in the scene's bottom corners (over the 3D view
+              only, never the side panels) so the scene gets the full height. */}
+          {view === 'site' && <TouchJoysticks />}
         </main>
 
-        {/* === RIGHT COLUMN === */}
+        {/* === RIGHT COLUMN: behavior tree === */}
         <aside className="flex flex-col gap-3 overflow-y-auto pr-1">
-          <SensorPanel />
-          <WorldPromptPanel />
+          <MissionPanel />
+          <PromptCard />
         </aside>
-
-        {/* === STATUS BAR === */}
-        <footer className="col-span-3 flex items-center gap-6 panel px-5 py-2.5 text-[11px] uppercase tracking-[0.2em] text-white/55">
-          <span>SYS <span className="readout ml-2">NOMINAL</span></span>
-          <span>CPU <span className="readout ml-2">12%</span></span>
-          <span>RT <span className="readout ml-2">1000 Hz</span></span>
-          <span>BT <span className="readout ml-2">idle</span></span>
-          <span className="ml-auto">Site · Hall-07 · Cell-02 · 2026-04-19</span>
-        </footer>
       </div>
+
+      {/* Bluetooth Xbox controller mapping (shows a legend when connected) */}
+      <GamepadControl />
     </RosProvider>
   );
 }

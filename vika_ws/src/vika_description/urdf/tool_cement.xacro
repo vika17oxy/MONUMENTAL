@@ -34,5 +34,33 @@
     </joint>
     <link name="${prefix}tcp"/>
 
+    <!-- Wrist camera on the cement tool: looks down the tool +Z at the laid wall
+         (DINO cement-following). Mirrors the gripper wrist cam. Distinct gz topic
+         (${prefix}wrist_cam) so it doesn't clash with robot_a's /wrist_cam. -->
+    <joint name="${prefix}wrist_cam_joint" type="fixed">
+      <parent link="${prefix}cement_base"/>
+      <child link="${prefix}wrist_cam_link"/>
+      <origin xyz="0.12 0 0.05" rpy="0 -1.5708 0"/>
+    </joint>
+    <link name="${prefix}wrist_cam_link">
+      <visual><geometry><box size="0.03 0.03 0.03"/></geometry></visual>
+      <inertial><mass value="0.05"/><inertia ixx="1e-5" iyy="1e-5" izz="1e-5" ixy="0" ixz="0" iyz="0"/></inertial>
+    </link>
+    <gazebo reference="${prefix}wrist_cam_link">
+      <sensor name="wrist_cam" type="camera">
+        <pose>0 0 0 0 0 0</pose>
+        <always_on>1</always_on>
+        <update_rate>15</update_rate>
+        <visualize>true</visualize>
+        <topic>${prefix}wrist_cam</topic>
+        <gz_frame_id>${prefix}wrist_cam_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>1.3</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>0.02</near><far>10.0</far></clip>
+        </camera>
+      </sensor>
+    </gazebo>
+
   </xacro:macro>
 </robot>

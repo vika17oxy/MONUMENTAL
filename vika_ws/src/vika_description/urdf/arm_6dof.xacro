@@ -37,8 +37,8 @@
     </xacro:macro>
 
     <xacro:if value="${define_materials}">
-      <material name="arm_grey"><color rgba="0.3 0.3 0.3 1"/></material>
-      <material name="arm_orange"><color rgba="0.92 0.45 0.10 1"/></material>
+      <material name="arm_grey"><color rgba="0.16 0.16 0.18 1"/></material>
+      <material name="arm_orange"><color rgba="0.95 0.45 0.10 1"/></material>
     </xacro:if>
 
     <!-- Shoulder mount plate (caller supplies the origin on the base) -->
@@ -58,9 +58,8 @@
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_base_link}">
-          <geometry><cylinder radius="0.12" length="0.15"/></geometry>
-        </xacro:geom_or_mesh>
+        <!-- primitive collision (cheap) — mesh kept for visual only -->
+        <geometry><cylinder radius="0.12" length="0.15"/></geometry>
       </collision>
       <inertial>
         <mass value="3.0"/>
@@ -74,7 +73,7 @@
       <child link="${prefix}link1"/>
       <origin xyz="0 0 0.175" rpy="0 0 1.5152"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-3.14" upper="3.14" effort="80" velocity="3.14"/>
+      <limit lower="-3.14" upper="3.14" effort="800" velocity="3.14"/>
       <dynamics damping="0.5" friction="0.1"/>
     </joint>
     <link name="${prefix}link1">
@@ -83,13 +82,11 @@
         <xacro:geom_or_mesh mesh_uri="${mesh_link1}">
           <geometry><box size="0.18 0.18 0.25"/></geometry>
         </xacro:geom_or_mesh>
-        <material name="arm_orange"/>
+        <material name="arm_grey"/>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_link1}">
-          <geometry><box size="0.18 0.18 0.25"/></geometry>
-        </xacro:geom_or_mesh>
+        <geometry><box size="0.18 0.18 0.25"/></geometry>
       </collision>
       <inertial><mass value="6.0"/><inertia ixx="0.10" iyy="0.10" izz="0.06" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
@@ -100,7 +97,7 @@
       <child link="${prefix}link2"/>
       <origin xyz="0.1038 -0.4023 0.2912" rpy="1.5708 0 -1.5708"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-2.70" upper="2.70" effort="80" velocity="2.5"/>
+      <limit lower="-2.70" upper="2.70" effort="800" velocity="2.5"/>
       <dynamics damping="0.5" friction="0.1"/>
     </joint>
     <link name="${prefix}link2">
@@ -109,13 +106,11 @@
         <xacro:geom_or_mesh mesh_uri="${mesh_link2}">
           <geometry><box size="0.12 0.14 0.55"/></geometry>
         </xacro:geom_or_mesh>
-        <material name="arm_orange"/>
+        <material name="arm_grey"/>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_link2}">
-          <geometry><box size="0.12 0.14 0.55"/></geometry>
-        </xacro:geom_or_mesh>
+        <geometry><box size="0.12 0.14 0.55"/></geometry>
       </collision>
       <inertial><mass value="5.0"/><inertia ixx="0.7" iyy="0.05" izz="0.7" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
@@ -126,7 +121,7 @@
       <child link="${prefix}link3"/>
       <origin xyz="0 1.300 0" rpy="0 0 -0.2221"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-2.70" upper="2.70" effort="60" velocity="2.8"/>
+      <limit lower="-2.70" upper="2.70" effort="500" velocity="2.8"/>
       <dynamics damping="0.5" friction="0.1"/>
     </joint>
     <link name="${prefix}link3">
@@ -135,13 +130,11 @@
         <xacro:geom_or_mesh mesh_uri="${mesh_link3}">
           <geometry><box size="0.10 0.12 0.45"/></geometry>
         </xacro:geom_or_mesh>
-        <material name="arm_orange"/>
+        <material name="arm_grey"/>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_link3}">
-          <geometry><box size="0.10 0.12 0.45"/></geometry>
-        </xacro:geom_or_mesh>
+        <geometry><box size="0.10 0.12 0.45"/></geometry>
       </collision>
       <inertial><mass value="3.5"/><inertia ixx="0.07" iyy="0.07" izz="0.01" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
@@ -152,7 +145,7 @@
       <child link="${prefix}link4"/>
       <origin xyz="0.1600 0.2369 0.0003" rpy="1.5708 0.9923 1.5708"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-6.10" upper="6.10" effort="20" velocity="5.0"/>
+      <limit lower="-6.10" upper="6.10" effort="300" velocity="5.0"/>
       <dynamics damping="0.2" friction="0.05"/>
     </joint>
     <link name="${prefix}link4">
@@ -165,9 +158,7 @@
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_link4}">
-          <geometry><cylinder radius="0.05" length="0.12"/></geometry>
-        </xacro:geom_or_mesh>
+        <geometry><cylinder radius="0.05" length="0.12"/></geometry>
       </collision>
       <inertial><mass value="1.5"/><inertia ixx="0.05" iyy="0.05" izz="0.005" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
@@ -178,7 +169,7 @@
       <child link="${prefix}link5"/>
       <origin xyz="-0.0860 0 1.3050" rpy="1.5708 -1.3556 -1.5708"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-2.27" upper="2.27" effort="20" velocity="5.0"/>
+      <limit lower="-2.27" upper="2.27" effort="300" velocity="5.0"/>
       <dynamics damping="0.2" friction="0.05"/>
     </joint>
     <link name="${prefix}link5">
@@ -191,9 +182,7 @@
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_link5}">
-          <geometry><box size="0.08 0.08 0.08"/></geometry>
-        </xacro:geom_or_mesh>
+        <geometry><box size="0.08 0.08 0.08"/></geometry>
       </collision>
       <inertial><mass value="0.8"/><inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
@@ -204,7 +193,7 @@
       <child link="${prefix}tool0"/>
       <origin xyz="0.1600 0 -0.0850" rpy="-1.5708 1.3440 -1.5708"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-6.10" upper="6.10" effort="15" velocity="6.0"/>
+      <limit lower="-6.10" upper="6.10" effort="150" velocity="6.0"/>
       <dynamics damping="0.1" friction="0.02"/>
     </joint>
     <link name="${prefix}tool0">
@@ -217,9 +206,7 @@
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <xacro:geom_or_mesh mesh_uri="${mesh_tool0}">
-          <geometry><cylinder radius="0.035" length="0.04"/></geometry>
-        </xacro:geom_or_mesh>
+        <geometry><cylinder radius="0.035" length="0.04"/></geometry>
       </collision>
       <inertial><mass value="0.3"/><inertia ixx="0.0002" iyy="0.0002" izz="0.0002" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
