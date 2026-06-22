@@ -1,100 +1,108 @@
-# VIKA – Prüfungs-Spickzettel
+# VIKA – Spickzettel für die Prüfung
 
-Mobiler Maurer-Roboter-Stack: ROS 2 Jazzy · MoveIt 2 · Gazebo Harmonic · Behavior Tree · Web-HMI.
-Zwei Roboter auf gemeinsamer Schiene: **VIKA-6 = robot_a** (Greifer/Mauern), **VIKA-5 = robot_b** (Zementdüse).
+Was ist VIKA? Ein Roboter-System, das eine Mauer baut.
+Zwei Roboter fahren auf einer gemeinsamen Schiene:
+- **VIKA-6 (robot_a)** = hat den **Greifer**, holt Ziegel und legt sie auf.
+- **VIKA-5 (robot_b)** = hat die **Zementdüse**, trägt nach jedem Kurs Mörtel auf.
+
+Software: ROS 2 (Steuerung) · MoveIt (Bewegungsplanung) · Gazebo (Simulation) · Behavior Tree (Ablauf-Logik) · Web-HMI (Bedienoberfläche).
 
 ---
 
-## 1. Inverse Kinematik
+## 1. Inverse Kinematik (IK)
 
-- **Solver:** KDL — `kdl_kinematics_plugin/KDLKinematicsPlugin` (numerisch, Jacobian/Newton-Raphson).
-  Config: `vika_moveit/config/robot_a_kinematics.yaml` — res 0.005, timeout 0.05 s, 3 Versuche.
-- **Warum KDL?** Serieller, nicht-redundanter 6-DOF-Arm → keine Redundanz, TRAC-IK/IKFast unnötig.
-- **Nachteil numerisch:** Seed-abhängig, Branch-Flips → fester Seed `[-0.02,-0.34,-0.78,-0.58,-0.01,-1.42]` (pick3_lift.py).
-- **MoveL / Ablegen:** kartesisch via `compute_cartesian_path` (hmi_bridge.py:79-82); max_step 0.01 m, jump_threshold 0, Orientierung aus aktuellem TF. **Top-down**: erst hovern, dann gerader Z-Abstieg (seitlich verhakt an Nachbarsteinen).
-- **Home j1 = 1.55 statt π/2:** exaktes Joint-Limit → MoveIt `CheckStartStateBounds` lehnt ab.
+**Was ist das?** Aus "wo soll die Hand hin" rechnet die IK aus, welchen Winkel jedes Gelenk braucht.
 
-## 2. Ziegel-Attachment
+- Wir benutzen den **KDL-Solver** (rechnet die Winkel Schritt für Schritt numerisch aus).
+- **Warum KDL?** Der Arm hat 6 Gelenke und keine "überflüssigen" Freiheiten. Da reicht der einfache Standard-Solver – TRAC-IK & Co. wären unnötig kompliziert.
+- Numerische Solver brauchen einen **Startwert (Seed)**, sonst springt die Lösung. Deshalb geben wir einen festen, bewährten Startwert vor.
+- **Gerade Bewegungen (Ablegen):** Statt frei zu planen, lassen wir die Hand auf einer **geraden Linie** fahren (cartesian path). Der Roboter geht **erst über den Zielpunkt, dann gerade nach unten**. (Seitlich reinschwenken hat an den Nachbarsteinen verhakt.)
+- **Warum Home-Winkel 1.55 statt 1.5708 (π/2)?** Genau auf dem Maximalwert meckert MoveIt ("Start state out of bounds"). Knapp darunter ist sicher.
 
-- **Gazebo `DetachableJoint`-Plugin** (tool_gripper.xacro:108-118) — keine echte Saugphysik.
-  Attach = fixer Joint `tool0`↔Ziegel; Topics `/suction/<row>/attach` & `/detach`.
-- Trigger: `/hmi/suck` → Bridge published 3× `Empty` aufs Attach-Topic (gegen Message-Loss).
-- Planer kennt Stein als **MoveIt AttachedCollisionObject** an `gripper_base`, Touch-Links `gripper_base, tool0, link6, link5`.
-- **Warum?** Echte Kontaktphysik teuer/instabil; toggelbarer Constraint = selber Effekt, deterministisch.
+## 2. Wie werden die Ziegel "gegriffen"?
 
-## 3. URDF / Struktur
+**Trick in der Simulation:** Es gibt **keine echte Saugkraft**. Stattdessen wird der Ziegel per Gazebo-Funktion **fest mit dem Greifer verbunden** (DetachableJoint = verbindbares Gelenk). Aufnehmen = verbinden, Ablegen = trennen.
 
-- Pro Roboter **7 Joints**: 1 prismatische Schiene (Achse Welt-Y, ≤3 m/s) + 6-DOF-Arm. Planungsgruppe = 6-DOF.
-- Xacro-Module: `base_rail` + `arm_6dof` + Tool, zusammengesetzt in `vika.urdf.xacro`.
-- Arm: j1 Base-Yaw ±π · j2/j3 Schulter/Ellbogen ±2.70 · j4 Wrist-Roll · j5 ±2.27 · j6 Tool-Roll.
-  j4 frei bei VIKA-6 (war bei VIKA-5 gesperrt).
-- Platzierung im URDF via `base_x`/`base_yaw`: robot_a x=-2.0/yaw=0, robot_b x=0.8/**yaw=π**.
-- **robot_b IK-Tip = `robot_b_arm_cement_base`** (Handgelenk-Wurzel), NICHT Düsenspitze — sonst macht `cement_angle` die Gruppe 7-DOF-redundant (j4 zuckt). Düse ~0.31 m darunter → IK-Ziel = `top_z + 0.31`.
+- Ausgelöst über ROS-Nachrichten an `/suction/<ziegel>/attach` bzw. `/detach`.
+- Damit der Planer den Ziegel "mitdenkt", wird er als angehängtes Objekt am Greifer eingetragen (sonst würde er ihn als Hindernis sehen).
+- **Warum so?** Echte Saug-Physik zu simulieren ist aufwendig und stürzt leicht ab. Das An-/Abkoppeln ist einfach und zuverlässig.
 
-## 4. Behavior Tree (bt_node.py)
+## 3. Aufbau des Roboters (URDF)
 
-- Eigene Engine: Sequence/Fallback + Action/Condition, States IDLE/RUNNING/SUCCESS/FAILURE. Tree-State als JSON auf `/bt/state`.
-- Ablauf (198-227): Park VIKA-5 → Pallet scannen → Steine detektieren → **∀ Kurs × Segment**: zur Palette → Pick-Row → Vakuum → heben → zum Segment → hovern (90°-Yaw) → gerade absenken → freeze+respawn → frei heben. **Nach jedem Kurs: Zement-Pass (VIKA-5).**
-- 3 Kurse × 3 Segmente; `BRICK_H = 0.238` → Kurs-Z = k·BRICK_H.
+Ein Roboter hat **7 bewegliche Teile**: 1 Schiene zum Fahren + 6 Armgelenke.
+- Die **Schiene** ist ein Schiebegelenk (fährt seitlich, bis 3 m/s).
+- Der **Arm** hat 6 Drehgelenke (Basis-Drehung, Schulter, Ellbogen, drei Handgelenke).
+- Beschrieben in Bausteinen (xacro-Dateien), die zu einem Gesamtroboter zusammengesetzt werden.
+- VIKA-5 steht um 180° gedreht (`yaw = π`) auf derselben Schiene.
+- **Besonderheit Zement-Roboter:** Die IK zielt nicht auf die Düsenspitze, sondern auf die **Handgelenk-Wurzel**, und die Düse (ca. 31 cm tiefer) wird im Ziel einberechnet. Sonst hätte der Arm ein Gelenk zu viel und würde zittern.
 
-## 5. HMI-Bridge (hmi_bridge.py)
+## 4. Ablauf-Logik (Behavior Tree)
 
-- Übersetzt Web-Kommandos → ROS Motion-Control.
-- Subs: `/hmi/cmd` (HOME/STOP/READY), `/hmi/joint_jog`+`/joint_set`, `/hmi/rail_jog`+`/rail_to`, `/hmi/tcp_jog` (kartesisch), `/hmi/goto`+`/goto_yaw` (IK), `/hmi/suck`.
-- Aktuiert via `follow_joint_trajectory` (arm_controller, rail_controller) + MoveGroup `/move_action`.
-- Quaternionen: `READY_QUAT` (Werkzeug runter) / `PLACE_QUAT` (90°-Yaw, Pads spannen Y).
+**Was ist ein Behavior Tree?** Ein Baum aus Schritten, der den Bauablauf steuert (jeder Schritt meldet: läuft / fertig / fehlgeschlagen). Der aktuelle Stand wird ans HMI gemeldet, damit man ihn sehen kann.
 
-## 6. Simulation (Gazebo Harmonic)
+**Ablauf:** VIKA-5 wegparken → Palette scannen → Ziegel erkennen → dann **für jeden Kurs und jedes Segment**:
+zur Palette fahren → Ziegel anfahren → ansaugen → hochheben → zum Mauer-Segment fahren → über dem Ziel positionieren → gerade absetzen → neuen Ziegel auf der Palette nachladen → wieder hochfahren.
+**Nach jedem Kurs** kommt VIKA-5 und trägt Zement auf. (3 Kurse × 3 Segmente.)
 
-- Welt `construction_site.sdf`, nativ mit GPU. Spawn-x/y ignoriert (Platzierung im URDF).
-- **Eine** dynamische Pick-Row bei `PICK_Y=0.04`, `PALLET_X=-0.6`; Rest statische Deko.
-- Masonry-Reihenfolge (lay_course.sh): erst Pick-Row per `set_pose` auf Palette zurück, **dann** statische Wall-Bricks spawnen — sonst überlappen Modelle → Physik explodiert. Bricks 0.375×0.25×0.238 m, 90°-Yaw.
+## 5. HMI-Bridge
+
+Die "Übersetzerin" zwischen Bedienoberfläche und Roboter: Sie nimmt einfache Befehle vom HMI entgegen und macht daraus echte Roboterbewegungen.
+Befehle z.B.: HOME (Grundstellung), STOP, einzelne Gelenke bewegen, Schiene fahren, ansaugen, zu Punkt X/Y/Z fahren.
+
+## 6. Simulation (Gazebo)
+
+- Baustellen-Welt mit den zwei Robotern.
+- Auf der Palette liegt **eine "echte" (bewegliche) Reihe Ziegel**, der Rest ist nur Deko. Diese eine Reihe wird nach jedem Aufnehmen wieder an ihren Platz zurückgesetzt → es gibt immer Nachschub am selben Ort.
+- **Wichtig:** Erst die Palettenreihe zurücksetzen, **dann** den abgelegten Mauer-Ziegel einfügen. Wenn sich zwei Ziegel überlappen, "explodiert" die Physik.
 
 ## 7. Sprachsteuerung
 
-- Mikro: Web Speech API (de-DE) → Ollama **Gemma** (`gemma4:12b`, env-konfig.) gibt **nur JSON** `{robot, action}` (HOME/STOP/READY/BUILD/CEMENT/AUTO/SELECT/NONE); Fallback = Keyword-Regex.
-- Antwort: **Kokoro TTS** (OpenAI-kompat., Stimme `af_heart`, Englisch) via HTML5-Audio.
-- Action → `/hmi/cmd` bzw. `/hmi/mission`.
+1. **Mikrofon** nimmt deutsche Sprache auf (Browser-Spracherkennung).
+2. **Gemma** (lokales KI-Sprachmodell) wandelt den Satz in einen klaren Befehl um, z.B. `{robot: VIKA-6, action: HOME}`. Notfalls greift eine einfache Stichwort-Erkennung.
+3. **Kokoro** spricht die Antwort vor (englische Stimme).
 
-## 8. Motion Planning
+Beispiel: "Vika sechs Home" → VIKA-6 fährt in Grundstellung, Antwort kommt als Sprachausgabe.
 
-- OMPL, Default **RRTConnect** (RRT* verfügbar). attempts 6, time 2–3 s, vel/acc-scaling 0.7.
-- Selbstkollision aus (grobes Primitivmodell überlappt in Normalposen); Umgebungskollision via Planning Scene (Palette, Wall-Bricks, Boden).
+## 8. Bewegungsplanung (MoveIt / OMPL)
+
+- Für freie Bewegungen plant **OMPL** mit dem Algorithmus **RRTConnect** (sucht zufällig einen kollisionsfreien Weg).
+- Geprüft wird gegen die Umgebung (Palette, Mauer, Boden).
+- **Selbstkollision ist abgeschaltet**, weil das vereinfachte Roboter-Modell sich in normalen Stellungen sonst fälschlich "selbst berührt".
 
 ---
 
-## Stack starten
+## Wie starte ich alles?
 
-Hybrid: **Gazebo + ROS 2 nativ** (GPU, gleicher Namespace), **rosbridge/Perception/HMI in Docker**, DDS auf `ROS_DOMAIN_ID=42` (host).
+Aufbau: Gazebo + ROS laufen direkt auf dem Rechner (für die Grafik/GPU), Oberfläche und Hilfsdienste laufen in Docker. Alle reden über dasselbe ROS-Netz.
 
 ```bash
-# Empfohlen (robust): killt DDS-Ghosts, wartet auf aktive Controller, bis 4× Retry
-./restart-clean.sh           # idle
-./restart-clean.sh build     # + BUILD-Mission
+# Empfohlen (zuverlässig):
+./restart-clean.sh           # sauberer Neustart, Roboter wartet
+./restart-clean.sh build     # ... und startet gleich den Mauerbau
 
-# Einfach:
-./start.sh                   # ROS sourcen → HMI-Container → Gazebo → ros2 launch vika_bringup full_demo.launch.py
+# Einfache Variante:
+./start.sh
 ```
-- HMI `http://localhost:5173` · rosbridge `ws://localhost:9090` · Gazebo nativ.
-- **Warum restart-clean?** start.sh verliert manchmal Spawner-Lock-Race (Controller nie *active* → 33 % RTF, nichts bewegt sich) + DDS-Ghost-Nodes (doppelter bt_node). restart-clean macht zuerst `docker restart vika_ros` (purged Prozesse + DDS), dann ein start-docker, wartet auf ≥3 aktive Controller.
+
+- Oberfläche: `http://localhost:5173`
+- **Warum lieber `restart-clean.sh`?** Beim normalen Start gehen manchmal die Motor-Regler nicht an (dann bewegt sich nichts) oder es bleiben "Geister"-Prozesse übrig. `restart-clean.sh` räumt zuerst alles weg, startet neu und wartet, bis die Regler wirklich laufen – notfalls mehrmals.
 
 ```bash
-# Mission manuell:
+# Mauerbau von Hand auslösen:
 ros2 topic pub --once /hmi/mission std_msgs/msg/String '{data: BUILD}'
 ```
 
 ---
 
-## Schnelle "Warum?"-Antworten
+## Kurz & knapp: typische "Warum?"-Fragen
 
-| Frage | Antwort |
+| Frage | Kurze Antwort |
 |---|---|
-| KDL statt TRAC-IK? | nicht-redundanter 6-DOF, kein Redundanz-Nutzen |
-| j1=1.55? | exaktes Limit → MoveIt lehnt Start-State ab |
-| Top-down ablegen? | seitlich verhakt an Nachbarsteinen |
-| DetachableJoint? | echte Saugphysik teuer/instabil |
-| robot_b IK auf cement_base? | sonst 7-DOF-redundant, j4 zuckt |
-| Nozzle z+0.31? | base erreichbar; lange Düse erreicht Steinoberfläche |
-| Respawn vor Wall-Spawn? | Modell-Überlappung → Physik explodiert |
-| Eine dynamische Pick-Row? | Rest Deko; zuverlässiger Pick an festem Y |
-| Selbstkollision aus? | grobes Primitivmodell überlappt in Normalposen |
+| Warum KDL-Solver? | Einfacher 6-Gelenk-Arm, mehr braucht's nicht. |
+| Warum Home-Winkel 1.55? | Genau am Limit meckert MoveIt; knapp darunter ist sicher. |
+| Warum von oben absetzen? | Seitlich verhakt der Ziegel an den Nachbarn. |
+| Warum kein echtes Saugen? | Echte Saug-Physik ist aufwendig & stürzt ab. |
+| Warum zielt Zement-IK aufs Handgelenk? | Sonst ein Gelenk zu viel → Arm zittert. |
+| Warum Reihe erst zurücksetzen, dann Ziegel spawnen? | Überlappung lässt die Physik "explodieren". |
+| Warum nur eine echte Ziegelreihe? | Rest ist Deko; so gibt's immer Nachschub am selben Platz. |
+| Warum Selbstkollision aus? | Das grobe Modell "berührt sich" sonst fälschlich selbst. |
