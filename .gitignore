@@ -31,10 +31,6 @@ vika-hmi/.vite/
 vika_docs/build/
 vika_docs/_build/
 
-# Perception models (binary)
-vika_ws/src/vika_perception/models/*.onnx
-vika_ws/src/vika_perception/models/*.pt
-
 # Secrets
 .env.local
 *.key

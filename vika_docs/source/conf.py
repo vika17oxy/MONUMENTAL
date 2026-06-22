@@ -8,7 +8,6 @@ copyright = '2026, VIKA team'
 release = '0.1.0'
 
 sys.path.insert(0, os.path.abspath('../../vika_ws/src/vika_mcp'))
-sys.path.insert(0, os.path.abspath('../../vika_ws/src/vika_perception'))
 sys.path.insert(0, os.path.abspath('../../vika_ws/src/vika_hmi_bridge'))
 
 extensions = [

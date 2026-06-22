@@ -8,7 +8,7 @@
 
 *"Draw a wall. Watch it rise."*
 
-`ROS 2 Jazzy` · `Gazebo Harmonic` · `MoveIt 2` · `React + three.js` · `MCP` · `YOLOv8`
+`ROS 2 Jazzy` · `Gazebo Harmonic` · `MoveIt 2` · `React + three.js` · `MCP`
 
 FHTW — MRE2 Robot Modelling, SS2026
 
@@ -38,7 +38,7 @@ Two deliberately different serial kinematics, one per author — satisfying the 
 - **Mission logic:** BehaviorTree.CPP + Groot2
 - **Web HMI:** Vite + React 19 + TypeScript + shadcn/ui + three.js (live URDF twin)
 - **Bridge:** `rosbridge_server` (WebSocket :9090) + `ros_gz_bridge`
-- **AI bonus:** LLM world-prompting via an **MCP server** · **YOLOv8-nano** brick-pose detection
+- **AI bonus:** LLM world-prompting via an **MCP server** · **Grounding DINO** brick-pose detection
 - **Docs:** Sphinx → LaTeX → PDF
 
 ## Quickstart

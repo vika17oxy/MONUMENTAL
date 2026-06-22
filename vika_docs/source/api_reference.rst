@@ -37,9 +37,6 @@ Packages
      - Manual teleoperation (joystick and gamepad) config and launch.
    * - ``vika_hmi_bridge``
      - Bridge node exposing HMI commands and state to ROS.
-   * - ``vika_perception``
-     - Perception package scaffold and launch. The brick detector is the
-       Grounding DINO node ``vika_moveit/scripts/dino_detector.py``.
    * - ``vika_mcp``
      - MCP server scaffold exposing world and mission controls to an external
        LLM.
