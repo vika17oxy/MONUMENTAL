@@ -1,7 +1,8 @@
-VIKA — MRE2 SS2026
-======================
+VIKA (MRE2 SS2026)
+==================
 
-Two cooperating mobile brick-laying robots for the FHTW MRE2 Robotermodellierung course.
+Two cooperating mobile brick-laying robots for the FHTW MRE2 Robotermodellierung
+course.
 
 .. toctree::
    :maxdepth: 2
