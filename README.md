@@ -75,8 +75,6 @@ docker/           Docker image + compose (vika_ros, vika_hmi)
 scripts/          helpers — incl. run_tests.sh (unit + e2e)
 start-docker.sh   📌 single-entry launcher (headless Gazebo + GUI + both robots + controllers)
 start.sh          native (non-Docker) launcher
-angabe.md         course brief (assignment)
-plan.md           📌 full project plan — single source of truth (current state in §18)
 ```
 
 ## Tests
@@ -92,12 +90,11 @@ plan.md           📌 full project plan — single source of truth (current sta
 
 ## Documentation
 
-- **[plan.md](plan.md)** — the complete project plan; **[§18](plan.md)** is the up-to-date implementation state, key files, demo workflow, known issues and next steps. **Start here.**
-- **[angabe.md](angabe.md)** — the original course brief.
+- **[vika_docs/](vika_docs/)** — Sphinx documentation (rendered to PDF) covering the use case, robot design, simulation, HMI and installation.
 
 ## Status
 
-Active coursework project. **Working & verified:** two self-designed serial robots (6-DOF vacuum-gripper arm + 5-DOF cement-nozzle arm) on parallel linear rails facing each other; no joint collapse (folded stow pose); stable Gazebo physics (primitive collision); MoveIt `move_group` + IK; the full test suite (18 unit + 11 e2e) green. **In progress:** clean end-to-end pick & TCP-jog execution (a live `gz_ros2_control` / planning-frame issue under debug), HMI ↔ rail/jog wiring, and the cooperative wall-build choreography. See [plan.md §18](plan.md) for details.
+Active coursework project. **Working & verified:** two self-designed serial robots (6-DOF vacuum-gripper arm + 5-DOF cement-nozzle arm) on parallel linear rails facing each other; no joint collapse (folded stow pose); stable Gazebo physics (primitive collision); MoveIt `move_group` + IK; the full test suite (18 unit + 11 e2e) green. **In progress:** clean end-to-end pick & TCP-jog execution (a live `gz_ros2_control` / planning-frame issue under debug), HMI ↔ rail/jog wiring, and the cooperative wall-build choreography.
 
 <div align="center">
 <sub>FHTW · MRE2 Robot Modelling · SS2026</sub>
