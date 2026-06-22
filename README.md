@@ -43,20 +43,17 @@ Two deliberately different serial kinematics, one per author — satisfying the 
 
 ## Quickstart
 
-> **Prerequisites:** Windows 11 with WSL2 Ubuntu 24.04 · Docker Desktop · Node 22+ and pnpm 10+ · Gazebo Harmonic (`sudo apt install gz-harmonic` inside WSL2).
+> **Prerequisites:** Windows 11 with WSL2 Ubuntu 24.04 · Docker Desktop · Gazebo Harmonic (`sudo apt install gz-harmonic` inside WSL2). The HMI runs in its own container, so no local Node/pnpm is needed.
 
 ```bash
 # 1. Clone
 git clone https://github.com/eliasbitsch/MONUMENTAL.git
 cd MONUMENTAL
 
-# 2. Build the ROS image
+# 2. Build the images (ROS + HMI; the HMI image installs its own deps)
 docker compose -f docker/docker-compose.yml build
 
-# 3. Install HMI deps
-cd vika-hmi && pnpm install && cd ..
-
-# 4. Launch everything
+# 3. Launch everything (sim + both robots + HMI container on :5173)
 ./start.sh
 ```
 
