@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRos } from '../ros/RosContext';
 
 // Xbox "standard mapping": axes[0,1]=left stick, [2,3]=right, buttons
@@ -15,16 +15,20 @@ export function GamepadControl() {
   const suckOn = useRef(false);
   const prev = useRef<boolean[]>([]);
   const lastJog = useRef(0);
-  const lastInput = useRef(0);
+  const [padOn, setPadOn] = useState(false);   // a gamepad is connected (shows the legend, incl. iPad)
+  const padRef = useRef(false);
 
   useEffect(() => {
     let raf = 0;
-    const STEP = 0.05;
-    const IDLE_MS = 8000;   // no gamepad input for this long → back to touch
+    const STEP = 0.12;        // TCP jog metres per tick at full deflection (fast)
+    const RAIL_STEP = 0.18;   // rail jog metres per tick while LB/RB held (fast)
+    const RATE_MS = 50;       // ~20 Hz continuous jog (snappier)
     const loop = () => {
       const gps = navigator.getGamepads ? navigator.getGamepads() : [];
       const gp = Array.from(gps).find((g) => g && g.connected) || null;
-      const { connected, selectedRobot, sendTcpJog, sendRailJog, sendCmd, sendDetect, sendSuck,
+      // track connection (drives the legend, incl. on iPad) — set state only on change
+      if (!!gp !== padRef.current) { padRef.current = !!gp; setPadOn(!!gp); }
+      const { connected, sendTcpJog, sendRailJog, sendCmd, sendDetect, sendSuck,
               inputMode, setInputMode } = apiRef.current;
       const now = performance.now();
       if (gp && connected) {
@@ -32,17 +36,12 @@ export function GamepadControl() {
         const lx = dz(ax[0] ?? 0), ly = dz(ax[1] ?? 0);
         const lt = bt[6]?.value ?? 0, rt = bt[7]?.value ?? 0;
         const zz = (rt > DEAD ? rt : 0) - (lt > DEAD ? lt : 0);
-        const anyBtn = bt.some((b) => b?.pressed);
-        // any real input -> switch to gamepad mode (this is what reveals the UI)
-        if (lx || ly || zz || anyBtn) {
-          lastInput.current = now;
-          if (inputMode !== 'gamepad') setInputMode('gamepad');
-        }
-        if (now - lastJog.current > 80) {            // ~12 Hz continuous jog
+        const rail = (bt[5]?.pressed ? 1 : 0) - (bt[4]?.pressed ? 1 : 0);
+        if ((lx || ly || zz || rail || bt.some((b) => b?.pressed)) && inputMode !== 'gamepad') setInputMode('gamepad');
+        if (now - lastJog.current > RATE_MS) {
           lastJog.current = now;
-          if ((lx || ly || zz)) sendTcpJog(lx * STEP, -ly * STEP, zz * STEP);  // IK for both robots
-          const rail = (bt[5]?.pressed ? 1 : 0) - (bt[4]?.pressed ? 1 : 0);
-          if (rail) sendRailJog(rail * 0.06);
+          if (lx || ly || zz) sendTcpJog(lx * STEP, -ly * STEP, zz * STEP);  // IK for both robots
+          if (rail) sendRailJog(rail * RAIL_STEP);                           // LB/RB → rail
         }
         const press = (i: number) => !!bt[i]?.pressed && !prev.current[i];
         if (press(0)) sendDetect();                                   // A → DETECT
@@ -51,16 +50,14 @@ export function GamepadControl() {
         if (press(3)) sendCmd('HOME');                                // Y → HOME
         prev.current = bt.map((b) => !!b.pressed);
       }
-      // revert to touch after the controller goes idle
-      if (inputMode === 'gamepad' && now - lastInput.current > IDLE_MS) setInputMode('touch');
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // the legend (and the on-button glyphs) only show once the controller is used
-  if (api.inputMode !== 'gamepad') return null;
+  // legend shows whenever a controller is CONNECTED (also on iPad), not only after use
+  if (!padOn) return null;
   const G = ({ c, l }: { c: string; l: string }) => (
     <span className="inline-flex items-center gap-1">
       <span className="flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-bold text-black" style={{ background: c }}>{l}</span>

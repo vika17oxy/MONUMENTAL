@@ -21,7 +21,9 @@ def generate_launch_description():
         .robot_description(
             file_path=urdf_xacro,
             # MUST match how full_demo spawns robot_b (x=+0.8, yaw=pi) or every
-            # IK/plan result is offset from the real arm.
+            # IK/plan result is offset from the real arm. (Moving it closer to 0.3 made
+            # the low-course nozzle-down pose UNreachable — self-collision/singularity —
+            # so it's back at 0.8, the working distance.)
             mappings={"prefix": "robot_b_", "tool": "cement",
                       "ns": "robot_b", "arm": "true",
                       "base_x": "0.8", "base_yaw": "3.14159"},

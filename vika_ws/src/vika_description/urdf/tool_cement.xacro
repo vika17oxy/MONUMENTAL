@@ -21,16 +21,21 @@
       <axis xyz="0 1 0"/>
       <limit lower="-1.57" upper="1.57" effort="5" velocity="1.0"/>
     </joint>
+    <!-- LONG thin nozzle: the tip (tcp) sits 0.33 m below the angle joint (0.45 m
+         below the wrist). VIKA-5 then holds its WRIST at the comfortably-reachable
+         height while the long nozzle reaches all the way DOWN to the brick top — so
+         the tip applies cement AT the bricks without the arm contorting at full
+         stretch. No collision on the nozzle (thin cosmetic tool; collision would make
+         the planner avoid the wall it's meant to touch). -->
     <link name="${prefix}nozzle">
-      <visual><geometry><cylinder radius="0.015" length="0.08"/></geometry><origin xyz="0 0 0.04"/><material name="tool_red"/></visual>
-      <collision><geometry><cylinder radius="0.015" length="0.08"/></geometry><origin xyz="0 0 0.04"/></collision>
+      <visual><geometry><cylinder radius="0.015" length="0.23"/></geometry><origin xyz="0 0 0.115"/><material name="tool_red"/></visual>
       <inertial><mass value="0.1"/><inertia ixx="0.0001" iyy="0.0001" izz="0.0001" ixy="0" ixz="0" iyz="0"/></inertial>
     </link>
 
     <joint name="${prefix}tcp_joint" type="fixed">
       <parent link="${prefix}nozzle"/>
       <child link="${prefix}tcp"/>
-      <origin xyz="0 0 0.08"/>
+      <origin xyz="0 0 0.23"/>
     </joint>
     <link name="${prefix}tcp"/>
 

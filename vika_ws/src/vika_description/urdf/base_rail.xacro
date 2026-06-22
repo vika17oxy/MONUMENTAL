@@ -61,8 +61,10 @@
       <child link="${prefix}base_link"/>
       <origin xyz="0 0 0.15" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
-      <limit lower="${(lay_sign-1)*travel/2}" upper="${(lay_sign+1)*travel/2}" effort="2000" velocity="0.8"/>
-      <dynamics damping="50.0" friction="20.0"/>
+      <limit lower="${(lay_sign-1)*travel/2}" upper="${(lay_sign+1)*travel/2}" effort="4000" velocity="3.0"/>
+      <!-- low damping/no static friction: the old 50/20 stalled the position-PID so
+           the carriage never actually slid (controller reported reached, joint frozen). -->
+      <dynamics damping="2.0" friction="0.0"/>
     </joint>
 
     <!-- Carriage: a dark slider centred on the rail, footprint matching the arm
@@ -74,10 +76,8 @@
         <geometry><box size="0.9 0.9 0.18"/></geometry>
         <material name="carriage_dark"/>
       </visual>
-      <collision>
-        <origin xyz="0 0 0.0" rpy="0 0 0"/>
-        <geometry><box size="0.9 0.9 0.18"/></geometry>
-      </collision>
+      <!-- no collision: the carriage is kinematically held by the prismatic joint;
+           a collision box only risks jamming the slide against the rail/ground. -->
       <inertial>
         <mass value="40.0"/>
         <inertia ixx="1.5" iyy="2.0" izz="2.0" ixy="0" ixz="0" iyz="0"/>

@@ -54,8 +54,8 @@ Key scripts (``vika_moveit/scripts``)
    line.
 
 ``pick3_lift.py``
-   Picks a row of three bricks: lower the suction gripper onto the bricks, attach
-   the three ``DetachableJoint`` grasps and lift.
+   Picks a row of three bricks: lower the suction gripper onto the row, attach
+   the ``DetachableJoint`` grasp (one per dynamic row) and lift.
 
 ``arm_client.py``
    Reusable client for inverse kinematics (with seed and collision options),
@@ -102,8 +102,9 @@ HMI command topics (served by ``hmi_bridge.py``):
   rail.
 * ``/hmi/tcp_jog`` (``Vector3``): Cartesian ``dx, dy, dz`` linear TCP jog.
 * ``/hmi/suction`` (``Bool``) and ``/hmi/suck`` (``String``): vacuum gripper.
-* ``/suction/<robot>/attach`` and ``/suction/<robot>/detach``: grasp the pick
-  bricks.
+* ``/suction/r0_0/attach`` and ``/suction/r0_0/detach``: grasp/release the
+  dynamic pick row (the row id is ``r``-prefixed because a topic segment may not
+  start with a digit).
 
 Mission and perception:
 

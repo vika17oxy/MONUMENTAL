@@ -42,7 +42,10 @@ import tf2_ros
 
 ROBOTS = ["robot_a", "robot_b"]
 # Safe stow ("HOME") pose — folded along the rail, no kissing/collapse.
-HOME_POSE = [1.5708, 0.0, 0.6, 0.0, 0.0, 0.0]
+# j1 is 1.55 (NOT 1.5708 = π/2 exactly): at the limit, float rounding pushes it a hair
+# OVER, so MoveIt's CheckStartStateBounds rejects any plan that STARTS from HOME
+# ("Start state out of bounds") — which is exactly what blocked VIKA-5's cement plan.
+HOME_POSE = [1.55, 0.0, 0.6, 0.0, 0.0, 0.0]
 
 
 def joints_of(robot):
@@ -173,7 +176,7 @@ class HmiBridge(Node):
             base = actual
         target = max(-8.0, min(8.0, base + float(msg.data)))
         self.rail_target[r] = target
-        sec = max(0.25, abs(target - actual) / 0.6)      # 0.6 m/s w/ margin under the 0.8 limit
+        sec = max(0.12, abs(target - actual) / 2.5)      # ~2.5 m/s (needs raised rail vel limit)
         self._send(self.rail[r], [f"{r}_rail_joint"], [target],
                    sec=int(sec), nsec=int((sec % 1) * 1e9), what=f"{r} rail")
 

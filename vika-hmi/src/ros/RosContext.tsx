@@ -40,6 +40,8 @@ type RosState = {
   sendSuck: (pads: string) => void;
   /** Mission behaviour tree live state + control. */
   btNodes: BtNodeState[];
+  /** Placed static wall bricks (world [x,y,z]) mirrored from the BT for the 3D twin. */
+  wallBricks: [number, number, number][];
   btRunning: boolean;
   sendMission: (cmd: 'START' | 'STOP' | 'CEMENT' | 'AUTO') => void;
   /** Wall plan drawn in the site view — world [x,y] vertices for place targets. */
@@ -73,6 +75,7 @@ export function RosProvider({ url, children }: { url: string; children: ReactNod
   const [detectImage, setDetectImage] = useState<string | null>(null);
   const [detectError, setDetectError] = useState('');
   const [btNodes, setBtNodes] = useState<BtNodeState[]>([]);
+  const [wallBricks, setWallBricks] = useState<[number, number, number][]>([]);
   const [btRunning, setBtRunning] = useState(false);
   const [inputMode, setInputMode] = useState<'touch' | 'gamepad'>('touch');
 
@@ -128,6 +131,14 @@ export function RosProvider({ url, children }: { url: string; children: ReactNod
         setBtNodes(d.nodes ?? []);
         setBtRunning(!!d.running);
       } catch { /* ignore */ }
+    });
+
+    // placed wall bricks (latched JSON list of [x, y, z]) → rendered in the 3D twin
+    const wallStateTopic = new ROSLIB.Topic({
+      ros: r, name: '/wall/state', messageType: 'std_msgs/String',
+    });
+    wallStateTopic.subscribe((msg: any) => {
+      try { setWallBricks(JSON.parse(msg.data) ?? []); } catch { /* ignore */ }
     });
 
     // AI detector outputs (latched on the node side, so we get the last result).
@@ -230,6 +241,7 @@ export function RosProvider({ url, children }: { url: string; children: ReactNod
       sendCmd, sendJointJog, sendJointSet, sendRailJog, sendTcpJog, sendSuction,
       detections, detectImage, detectError, sendDetect, sendGoto, sendSuck,
       btNodes, btRunning, sendMission, sendWall, inputMode, setInputMode,
+      wallBricks,
     }}>
       {children}
     </Ctx.Provider>

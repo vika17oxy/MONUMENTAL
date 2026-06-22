@@ -15,8 +15,10 @@ Publishes:   /bt/state      std_msgs/String   JSON {running, nodes:[{name,type,s
 Drives the robot through the same /hmi/* topics the bridge serves.
 """
 import json
+import os
 import time
 import subprocess
+import threading
 
 import rclpy
 from rclpy.node import Node as RclNode
@@ -167,6 +169,9 @@ class BtNode(RclNode):
         self.p_jog = self.create_publisher(Vector3, "/hmi/tcp_jog", 10)
         self.p_cmd = self.create_publisher(String, "/hmi/cmd", 10)
         self.p_active = self.create_publisher(String, "/hmi/active_robot", 10)
+        # placed static wall bricks mirrored to the HMI 3D twin (latched so a late
+        # browser still gets the wall built so far). JSON list of [x, y, z_centre].
+        self.p_wall_state = self.create_publisher(String, "/wall/state", latched)
         self.create_subscription(String, "/hmi/mission", self.on_mission, 10)
         self.create_subscription(String, "/detect/result", self.on_result, latched)
         # volatile (10) — the HMI/rosbridge publishes the wall volatile; a
@@ -175,6 +180,17 @@ class BtNode(RclNode):
 
         self.dets = []
         self.wall = []          # wall plan drawn in the site view: [[x,y], ...]
+        self.wall_bricks = []   # placed static wall bricks (world [x,y,z]) for the HMI twin
+        # the full ordered list of every wall brick the build will lay (course by
+        # course, segment by segment, 3 bricks per segment) at deterministic poses —
+        # the gz-sync thread publishes the first N that actually exist in Gazebo.
+        self._all_wall_bricks = []
+        for z in range(NUM_COURSES):
+            for s in range(NUM_SEGS):
+                seg_y = WALL_Y0 + s * SEG_LEN + (z % 2) * (BRICK_LEN / 2.0)
+                zc = z * BRICK_H + BRICK_H / 2.0
+                for dy in (-0.385, 0.0, 0.385):
+                    self._all_wall_bricks.append([round(WALL_X, 3), round(seg_y + dy, 3), round(zc, 3)])
         self.running = False
         self.root = self._build()                       # VIKA-6 masonry (build)
         self.root_cement = self._build_cement()          # VIKA-5 cement pass
@@ -183,6 +199,8 @@ class BtNode(RclNode):
         self.active_root = self.root
         self.create_timer(0.4, self.tick)
         self.publish_state()
+        self._publish_wall()    # latch an initial (empty) wall so late HMIs sync
+        threading.Thread(target=self._gz_wall_sync, daemon=True).start()
         self.get_logger().info("bt_node ready — waiting for /hmi/mission START")
 
     # ── the tree ──
@@ -204,7 +222,7 @@ class BtNode(RclNode):
             # INTERLEAVE cement: after each course (except the top one) VIKA-6 goes to
             # HOME and waits while VIKA-5 lays a mortar bed on this course's top; then
             # re-activate VIKA-6 (active robot) so the next course's picks drive it.
-            if z < NUM_COURSES - 1:
+            if z < NUM_COURSES - 1 or NUM_COURSES == 1:   # ...or the single-course quick test
                 items.append(self._course_cement(z))
                 items.append(A("VIKA-6 active again", 3.0,
                                on_enter=lambda: self.p_active.publish(String(data="robot_a"))))
@@ -280,6 +298,30 @@ class BtNode(RclNode):
             subprocess.Popen(["bash", LAY_SH, str(z), str(WALL_X), str(seg_y), row, str(pick_y)])
         except Exception as e:
             self.get_logger().warn(f"lay failed: {e}")
+        # NB: the HMI twin is NOT updated here — a background thread mirrors the
+        # ACTUAL Gazebo wall_* models so web and sim never drift (lay can fail).
+
+    def _publish_wall(self):
+        self.p_wall_state.publish(String(data=json.dumps(self.wall_bricks)))
+
+    def _gz_wall_sync(self):
+        """Mirror the REAL Gazebo wall to /wall/state so the HMI twin matches the
+        sim exactly. The static wall bricks are laid in a fixed course/segment
+        order at deterministic poses, so counting the live ``wall_*`` models tells
+        us how many of that ordered list currently exist."""
+        env = {**os.environ, "GZ_PARTITION": "vika"}
+        while True:
+            try:
+                out = subprocess.run(["gz", "model", "--list"], capture_output=True,
+                                     text=True, timeout=4, env=env).stdout
+                n = sum(1 for ln in out.splitlines() if "wall_" in ln)
+                new = self._all_wall_bricks[: (n // 3) * 3]   # 3 bricks per segment
+                if new != self.wall_bricks:
+                    self.wall_bricks = new
+                    self._publish_wall()
+            except Exception:
+                pass
+            time.sleep(1.5)
 
     def _slide_to(self, rail):
         self.p_active.publish(String(data="robot_a"))
@@ -330,22 +372,27 @@ class BtNode(RclNode):
         y0 = WALL_Y0 + stagger
         # keep the nozzle at a comfortably REACHABLE height so VIKA-5 lands centred over
         # the wall (x=WALL_X) instead of short/beside it; the mortar bed itself spawns at
-        # the true course-top height (ground truth) regardless of the nozzle height.
-        nozzle_z = max(CEMENT_HOVER - (NUM_COURSES - 1 - z) * BRICK_H, 0.45)
         top_z = (z + 1) * BRICK_H                              # mortar bed sits on course z
+        # IK tip is cement_BASE (the wrist-side tool root, per the SRDF), NOT the nozzle
+        # tip. So target cement_base at a REACHABLE height above the course, and the
+        # ~0.31 m of tool below it (cement_angle offset + nozzle) puts the actual nozzle
+        # TIP down at the brick top. Targeting cement_base at the brick height itself is
+        # unreachable -> VIKA-5 never moves (that was the bug).
+        nozzle_z = top_z + 0.31
         steps = [
             A("VIKA-6 to HOME (wait)", 6.0, on_enter=self._park_a),
             A("VIKA-5 to course start", 7.0, on_enter=lambda yy=y0: self._slide_b(yy)),
-            # Position the nozzle ONCE, centred over the wall. After this the arm pose is
-            # FROZEN — every strip only slides the RAIL along Y, so no IK re-solve moves
-            # the arm joints (axis 4 stays locked) and the nozzle stays centred.
             A("Nozzle over course (centre)", 8.0, on_enter=lambda yy=y0, nz=nozzle_z:
                 self._cement_pos_z(yy, nz)),
         ]
         for i in range(N_CEMENT):
             y = y0 + i * run_len / (N_CEMENT - 1)
-            # RAIL ONLY — arm held, axis 4 does not move; nozzle translates along the wall
-            steps.append(A(f"Run to y={y:.1f}", 4.0, on_enter=lambda yy=y: self._slide_b(yy)))
+            # Slide the rail AND re-solve IK every strip (axis 4 free) so VIKA-5 actually
+            # lowers the nozzle to the wall each time — rail-only positioned just once and,
+            # if that IK was flaky, the arm stayed up and only the rail moved. With the
+            # LONG nozzle the wrist target stays reachable while the tip sits at the bricks.
+            steps.append(A(f"Run to y={y:.1f}", 5.0, on_enter=lambda yy=y, nz=nozzle_z:
+                           (self._slide_b(yy), self._cement_pos_z(yy, nz))))
             steps.append(A("Apply cement", 2.5, on_enter=lambda yy=y, tz=top_z:
                            self._spawn_cement(yy, tz)))
         steps.append(A("VIKA-5 home", 5.0, on_enter=self._park_b))

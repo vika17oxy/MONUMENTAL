@@ -79,7 +79,7 @@ export function TouchJoysticks() {
   const right = useRef({ x: 0, y: 0 });
   const timer = useRef<number | null>(null);
 
-  const STEP = 0.07; // metres per tick at full deflection (faster)
+  const STEP = 0.16; // metres per tick at full deflection (fast)
   const tick = () => {
     const dx = left.current.x * STEP;
     const dy = left.current.y * STEP;
@@ -89,7 +89,7 @@ export function TouchJoysticks() {
   const refresh = () => {
     const idle = !left.current.x && !left.current.y && !right.current.x && !right.current.y;
     if (idle && timer.current !== null) { clearInterval(timer.current); timer.current = null; }
-    if (!idle && timer.current === null) { timer.current = window.setInterval(tick, 75); }
+    if (!idle && timer.current === null) { timer.current = window.setInterval(tick, 50); }  // ~20 Hz
   };
   useEffect(() => () => { if (timer.current !== null) clearInterval(timer.current); }, []);
 

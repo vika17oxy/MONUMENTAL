@@ -16,8 +16,10 @@ Construction-site world
 The world (``vika_gazebo/worlds/construction_site.sdf``) holds the masonry cell:
 
 * A ground plane and a pallet as the brick source.
-* Three dynamic pick bricks that the suction gripper grabs. They are modelled
-  separately from the static pallet bricks for performance.
+* A flat 3x3 layer of three brick rows on the pallet. Only ``row_0_0`` is a
+  *dynamic* pick row that the suction gripper grabs and that respawns; the other
+  two rows (``row_1_0``, ``row_2_0``) are static decoration. The dynamic row is
+  modelled separately from the static wall bricks for performance.
 * The wall zone between the two robot rails, where placed bricks
   (``wall_brick.sdf``) and the cement strip (``cement_strip.sdf``) accumulate.
 
@@ -38,9 +40,10 @@ Control stack
 * ``rail_controller``, a ``JointTrajectoryController`` for the prismatic rail
   carriage.
 
-The vacuum gripper is not a ``ros2_control`` controller. Grasping is done with
-Gazebo ``DetachableJoint`` plugins toggled over the ``/suction/<robot>/attach``
-and ``/detach`` topics.
+The vacuum gripper is not a ``ros2_control`` controller. Grasping is done with a
+Gazebo ``DetachableJoint`` plugin toggled over the per-row ``/suction/r0_0/attach``
+and ``/suction/r0_0/detach`` topics (the row id is ``r``-prefixed because a topic
+segment may not start with a digit).
 
 MoveIt 2 ``move_group`` runs against these live controllers. Inverse kinematics
 use the KDL solver. The ``MoveGroup`` action and the TF chain
@@ -54,7 +57,8 @@ The cell integrates several simulated sensors and actuators:
 
 * A wrist camera on the placing arm, the image source for the planned brick
   detector (see :doc:`ai_modules`).
-* Vacuum suction (three ``DetachableJoint`` plugins) as the grasp actuator.
+* Vacuum suction (a single ``DetachableJoint`` plugin on the dynamic row) as the
+  grasp actuator.
 * Cement extrusion as the bonding actuator.
 * Joint state and TF telemetry for the digital twin.
 

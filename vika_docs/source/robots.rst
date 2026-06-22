@@ -13,9 +13,10 @@ Shared base: linear rail
 
 Both robots use the same base concept (``base_rail.xacro``):
 
-* A world-anchored rail, 12.5 m long, with the robot fixed at plus or minus 2 m
-  via the ``base_x`` and ``base_yaw`` xacro arguments. The rail is world-fixed,
-  so the spawn pose does not move it.
+* A world-anchored rail, 12.5 m long, with each robot anchored via the ``base_x``
+  and ``base_yaw`` xacro arguments. robot_a sits at ``base_x = -2.0`` (yaw 0) and
+  robot_b at ``base_x = +0.8`` (yaw pi, so it faces robot_a). The rail is
+  world-fixed, so the spawn pose does not move it.
 * A prismatic carriage that slides along the rail, driven by the
   ``rail_controller``. This lets each arm traverse the full wall length.
 
@@ -120,11 +121,13 @@ Each tool is its own xacro and is attached at the arm flange (``*_arm_tool0``).
 Vacuum suction gripper (``tool_gripper.xacro``, robot_a):
 
 * A horizontal bar carrying three suction pads spaced one brick apart, so the
-  gripper picks a full row of three bricks in a single motion.
-* Grasping is simulated with three Gazebo ``DetachableJoint`` plugins. Publishing
-  on the attach topic fixes the three pick bricks to the pads, and detaching
-  releases them. ``reset_bricks.sh`` detaches and re-drops the bricks onto the
-  pallet at startup.
+  gripper picks a full row of three (fused) bricks in a single motion.
+* The pallet shows a flat 3x3 layer of three rows, but only ``row_0_0`` is
+  *dynamic* and respawning; ``row_1_0`` and ``row_2_0`` are static decoration.
+  Grasping is simulated with a single Gazebo ``DetachableJoint`` plugin bound to
+  ``row_0_0``: publishing on its attach topic fixes that whole row to the pads,
+  and detaching releases it. ``reset_bricks.sh`` re-drops the dynamic row onto
+  the pallet at startup, and ``refill_pallet.sh`` respawns it after each course.
 
 Cement nozzle (``tool_cement.xacro``, robot_b):
 

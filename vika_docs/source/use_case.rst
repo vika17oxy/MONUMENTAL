@@ -24,7 +24,7 @@ assignment, by alternating between bonding and placing for every course of the
 wall:
 
 #. Reset and supply. A pallet of bricks sits at the edge of the cell, and the
-   three dynamic pick bricks are dropped onto the pallet.
+   dynamic pick row (three fused bricks) is dropped onto the pallet.
 #. Bond (robot_b). VIKA 5 traverses its rail and traces the current wall top edge
    with the cement nozzle, laying a continuous cement bead.
 #. Pick (robot_a). VIKA lowers its suction gripper onto a brick row, attaches the

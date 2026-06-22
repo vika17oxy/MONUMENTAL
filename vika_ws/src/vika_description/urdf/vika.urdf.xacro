@@ -36,13 +36,18 @@
   <xacro:base_rail prefix="${pfx}" base_x="${base_x}" base_yaw="${base_yaw}"/>
 
   <xacro:if value="${arm_enabled}">
+    <!-- J4 (wrist-roll) is left FREE. It was hard-locked for VIKA-5 (cement) to claim
+         a 5-DOF arm, but the zero-range lock made MoveIt reject every cement plan
+         ("Start state out of bounds") so VIKA-5 never moved to cement. Unlocked = the
+         working configuration; wrist-roll is harmless (the nozzle is symmetric). -->
+    <xacro:property name="lock_j4" value="false"/>
     <xacro:if value="${use_meshes}">
-      <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link">
+      <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link" lock_j4="${lock_j4}">
         <origin xyz="0 0 0.09" rpy="0 0 0"/>
       </xacro:arm_6dof>
     </xacro:if>
     <xacro:unless value="${use_meshes}">
-      <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link"
+      <xacro:arm_6dof prefix="${pfx}arm_" parent="${pfx}base_link" lock_j4="${lock_j4}"
                       mesh_base_link="" mesh_link1="" mesh_link2="" mesh_link3=""
                       mesh_link4="" mesh_link5="" mesh_tool0="">
         <origin xyz="0 0 0.09" rpy="0 0 0"/>

@@ -308,9 +308,27 @@ function PalletAndBricks() {
   );
 }
 
+/** The wall built so far — placed static bricks mirrored live from the BT
+ *  (/wall/state). Each brick is yawed so its long side (0.375) runs along world Y.
+ *  world (x,y,z) -> three.js (x, z, -y). */
+function WallBricks({ bricks }: { bricks: [number, number, number][] }) {
+  if (!bricks.length) return null;
+  return (
+    <group>
+      {bricks.map(([wx, wy, wz], i) => (
+        <mesh key={i} position={[wx, wz, -wy]} castShadow receiveShadow>
+          <boxGeometry args={[0.25, 0.238, 0.375]} />
+          <meshStandardMaterial color="#b83227" roughness={0.92} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function Cell() {
   const ja = useRobotJoints('robot_a');
   const jb = useRobotJoints('robot_b');
+  const { wallBricks } = useRos();
   return (
     <group>
       {/* world layout from the URDF: rail_a x=-2 (yaw 0), rail_b x=+0.8 (yaw π).
@@ -320,6 +338,7 @@ function Cell() {
       <Robot id="robot_a" joints={ja} baseX={-2} yaw={0} tool="gripper" />
       <Robot id="robot_b" joints={jb} baseX={0.8} yaw={Math.PI} tool="cement" decal={false} />
       <PalletAndBricks />
+      <WallBricks bricks={wallBricks} />
     </group>
   );
 }

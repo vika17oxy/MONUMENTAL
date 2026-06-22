@@ -17,6 +17,7 @@
 
   <xacro:macro name="arm_6dof" params="prefix parent
                                        define_materials:=true
+                                       lock_j4:=false
                                        mesh_base_link:='package://vika_description/meshes/arm/ROD-STL/base.stl'
                                        mesh_link1:='package://vika_description/meshes/arm/ROD-STL/link1.stl'
                                        mesh_link2:='package://vika_description/meshes/arm/ROD-STL/link2.stl'
@@ -145,7 +146,19 @@
       <child link="${prefix}link4"/>
       <origin xyz="0.1600 0.2369 0.0003" rpy="1.5708 0.9923 1.5708"/>
       <axis xyz="0 0 1"/>
-      <limit lower="-6.10" upper="6.10" effort="300" velocity="5.0"/>
+      <!-- lock_j4 (VIKA-5 / cement): wrist-roll about the rotationally-symmetric
+           nozzle is functionless, so the doc'd 5-DOF arm HARD-locks it to 0
+           (zero-range limit -> the joint cannot move, realising 5 DOF). -->
+      <xacro:if value="${lock_j4}">
+        <!-- NOT a zero range [0,0]: the joint never reports EXACTLY 0 (float noise
+             ~1e-13), so [0,0] makes MoveIt's CheckStartStateBounds reject every plan
+             that STARTS there ("Start state out of bounds") — that silently blocked
+             VIKA-5's cement IK. A tiny ±0.05 range keeps it effectively 5-DOF/locked. -->
+        <limit lower="-0.05" upper="0.05" effort="300" velocity="5.0"/>
+      </xacro:if>
+      <xacro:unless value="${lock_j4}">
+        <limit lower="-6.10" upper="6.10" effort="300" velocity="5.0"/>
+      </xacro:unless>
       <dynamics damping="0.2" friction="0.05"/>
     </joint>
     <link name="${prefix}link4">
