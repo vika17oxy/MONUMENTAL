@@ -72,8 +72,13 @@ stop_sim
 sleep 1
 
 echo "==> Launching Gazebo physics server (headless)"
+# Headless sensor rendering (ogre2) uses EGL. Without a vendor hint glvnd falls back
+# to Mesa, which can't drive the NVIDIA GPU ("libEGL: driver (null)", "failed to
+# create dri2 screen") -> the wrist cameras render dark. Force the NVIDIA EGL vendor
+# so the RTX renders the camera sensors on-GPU (we keep NVIDIA, not Mesa software).
+SERVER_GL_ENV='export __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json __GLX_VENDOR_LIBRARY_NAME=nvidia'
 docker exec -d vika_ros bash -c \
-  "$SRC && export GZ_SIM_RESOURCE_PATH=/ws/install/vika_gazebo/share:/ws/install/vika_description/share && export GZ_SIM_SYSTEM_PLUGIN_PATH=/opt/ros/jazzy/lib && gz sim -r -s --headless-rendering $WORLD > /tmp/gz.log 2>&1"
+  "$SERVER_GL_ENV && $SRC && export GZ_SIM_RESOURCE_PATH=/ws/install/vika_gazebo/share:/ws/install/vika_description/share && export GZ_SIM_SYSTEM_PLUGIN_PATH=/opt/ros/jazzy/lib && gz sim -r -s --headless-rendering $WORLD > /tmp/gz.log 2>&1"
 sleep 6
 
 echo "==> Launching Gazebo GUI client (Mesa software GLX — crash-free on NVIDIA/Wayland)"

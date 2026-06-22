@@ -385,7 +385,8 @@ function LoadingFallback() {
 const WALL_START_X = -0.6;
 const WALL_START_Y = 2.0;
 const BRICK_LEN = 0.375;          // brick long side, along the +Y wall
-const MAX_BRICKS = 5;
+const SEG_BRICKS = 3;            // the wall is laid in segments of 3 bricks
+const MAX_BRICKS = 15;           // up to 5 segments × 3
 const SX = WALL_START_X;          // three.js x
 const SZ = -WALL_START_Y;         // three.js z (= -world y)
 
@@ -410,8 +411,11 @@ function WallPlan({ count }: { count: number }) {
           <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={0.4} />
         </mesh>
       ))}
-      {/* count hovering over the line (billboard, always faces the camera) */}
-      <Html position={[SX, 0.5, (SZ + endZ) / 2]} center style={{ pointerEvents: 'none' }}>
+      {/* thin leader from the line up to the floating count */}
+      <Line points={[[SX, 0.06, (SZ + endZ) / 2], [SX, 1.0, (SZ + endZ) / 2]]}
+        color={ACCENT} lineWidth={1} transparent opacity={0.5} />
+      {/* count hovering well ABOVE the line (billboard, always faces the camera) */}
+      <Html position={[SX, 1.1, (SZ + endZ) / 2]} center style={{ pointerEvents: 'none' }}>
         <div style={{
           display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap',
           padding: '2px 8px', borderRadius: 4, background: 'rgba(0,0,0,0.7)',
@@ -433,8 +437,12 @@ const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const wallPoints = (count: number): [number, number][] =>
   Array.from({ length: count }, (_, i) => [r3(WALL_START_X), r3(WALL_START_Y + i * BRICK_LEN)]);
 // pointer ground point -> clamped brick count along the fixed +Y axis
-const countFromPoint = (pz: number) =>
-  Math.min(MAX_BRICKS, Math.max(1, Math.round(Math.max(0, SZ - pz) / BRICK_LEN)));
+// snap to whole 3-brick segments (the wall is laid 3 bricks at a time)
+const countFromPoint = (pz: number) => {
+  const bricks = Math.round(Math.max(0, SZ - pz) / BRICK_LEN);
+  const segs = Math.max(1, Math.round(bricks / SEG_BRICKS));
+  return Math.min(MAX_BRICKS, segs * SEG_BRICKS);
+};
 
 /** Combined site view: satellite ground + live 3D robots, with a 2D/3D camera
  *  toggle, zoom (orbit), and a draw-a-line wall planner that publishes /hmi/wall. */
@@ -444,7 +452,7 @@ export function RobotTwinView() {
   const [drawing, setDrawing] = useState(false);
   const [count, setCount] = useState(0);          // planned wall length in bricks (0 = none)
 
-  const toggleDraw = () => setDrawing((d) => { const nd = !d; if (nd && count === 0) setCount(1); return nd; });
+  const toggleDraw = () => setDrawing((d) => { const nd = !d; if (nd && count === 0) setCount(SEG_BRICKS); return nd; });
   const clearWall = () => { setCount(0); setDrawing(false); sendWall([]); };
   const commitWall = () => { if (count > 0) { sendWall(wallPoints(count)); setDrawing(false); } };
 
