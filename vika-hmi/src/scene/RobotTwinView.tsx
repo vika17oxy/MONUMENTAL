@@ -8,7 +8,7 @@
  *   three.js X = world X,  three.js Y = world Z (up),  three.js Z = -world Y.
  */
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls, Grid, ContactShadows, Environment, Text, Line, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
+import { OrbitControls, Grid, ContactShadows, Environment, Text, Line, Html, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import { ReactNode, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
@@ -274,26 +274,27 @@ function Carriage({ x, z = 0 }: { x: number; z?: number }) {
   );
 }
 
-/** Euro pallet + the full 3(Y)×4(Z)×3(X) pick-brick stack, at the real sim world
- *  positions (construction_site.sdf / reset_bricks.sh).
+/** Euro pallet + the pick bricks at the real sim world positions
+ *  (construction_site.sdf): 3 rows along Y × 3 bricks along X, a SINGLE flat layer
+ *  (row_0_0 dynamic pick-row + row_1_0/row_2_0 static deco), all at z base 0.144.
  *  world (x, y) -> three.js (x, -y); world z (up) -> three.js y. */
 function PalletAndBricks() {
   const RY = [0.04, 0.30, 0.56];          // 3 rows along world Y
   const RX = [-0.985, -0.6, -0.215];      // 3 bricks per row along world X (centre -0.6 ± 0.385)
-  const BH = 0.238, BASE_Z = 0.144;       // brick height; pallet top / first course base
+  const BH = 0.238, BASE_Z = 0.144;       // brick height; pallet top = first-layer base
+  const cy = BASE_Z + BH / 2;             // single-layer brick centre (world z)
   const bricks: ReactNode[] = [];
   RY.forEach((wy, yi) =>
-    [0, 1, 2, 3].forEach((zi) =>
-      RX.forEach((wx, xi) => {
-        const cy = BASE_Z + zi * BH + BH / 2;   // brick centre (world z)
-        bricks.push(
-          <mesh key={`${yi}-${zi}-${xi}`} position={[wx, cy, -wy]} castShadow receiveShadow>
-            <boxGeometry args={[0.375, BH, 0.25]} />
-            <meshStandardMaterial color="#e0331e" roughness={0.85} />
-          </mesh>,
-        );
-      }),
-    ),
+    RX.forEach((wx, xi) => {
+      bricks.push(
+        // visual-only gap: render each brick a bit smaller than its real footprint
+        // (0.375 × 0.25) so the bricks read as separate; centres = real sim positions.
+        <mesh key={`${yi}-${xi}`} position={[wx, cy, -wy]} castShadow receiveShadow>
+          <boxGeometry args={[0.32, BH, 0.20]} />
+          <meshStandardMaterial color="#e0331e" roughness={0.85} />
+        </mesh>,
+      );
+    }),
   );
   return (
     <group>
@@ -359,24 +360,62 @@ function LoadingFallback() {
   );
 }
 
-/** The drawn wall plan: amber polyline + vertex markers on the ground. */
-function Wall({ points }: { points: [number, number][] }) {
-  if (!points.length) return null;
-  const pts3 = points.map(([x, z]) => [x, 0.06, z] as [number, number, number]);
+// Wall planner geometry — the wall is fixed: it starts where the auto-flow lays
+// the first brick (world x=-0.6, y=2.0) and runs straight along +Y. Only its
+// LENGTH is drawn → a brick count (1..MAX_BRICKS). world (x,y) -> three.js (x,-y).
+const WALL_START_X = -0.6;
+const WALL_START_Y = 2.0;
+const BRICK_LEN = 0.375;          // brick long side, along the +Y wall
+const MAX_BRICKS = 5;
+const SX = WALL_START_X;          // three.js x
+const SZ = -WALL_START_Y;         // three.js z (= -world y)
+
+/** The wall plan: fixed start anchor + a straight +Y line of `count` bricks, with
+ *  the count hovering over the line. Direction is locked (no angle change). */
+function WallPlan({ count }: { count: number }) {
+  if (count <= 0) return null;
+  const endZ = SZ - count * BRICK_LEN;                 // +Y world = -Z three.js
   return (
     <group>
-      {points.length >= 2 && <Line points={pts3} color={ACCENT} lineWidth={3} />}
-      {pts3.map((p, i) => (
-        <mesh key={i} position={p}>
-          <sphereGeometry args={[0.09, 16, 16]} />
-          <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={0.5} />
+      {/* start anchor (where the first brick goes) */}
+      <mesh position={[SX, 0.06, SZ]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.11, 0.2, 28]} />
+        <meshBasicMaterial color={ACCENT} side={THREE.DoubleSide} />
+      </mesh>
+      {/* the straight wall line */}
+      <Line points={[[SX, 0.06, SZ], [SX, 0.06, endZ]]} color={ACCENT} lineWidth={4} />
+      {/* per-brick separators */}
+      {Array.from({ length: count + 1 }, (_, i) => (
+        <mesh key={i} position={[SX, 0.06, SZ - i * BRICK_LEN]}>
+          <sphereGeometry args={[0.055, 12, 12]} />
+          <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={0.4} />
         </mesh>
       ))}
+      {/* count hovering over the line (billboard, always faces the camera) */}
+      <Html position={[SX, 0.5, (SZ + endZ) / 2]} center style={{ pointerEvents: 'none' }}>
+        <div style={{
+          display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap',
+          padding: '2px 8px', borderRadius: 4, background: 'rgba(0,0,0,0.7)',
+          border: `1px solid ${ACCENT}`, color: ACCENT, fontFamily: 'monospace',
+          fontWeight: 700, transform: 'translateY(-50%)',
+        }}>
+          <span style={{ fontSize: 18 }}>{count}</span>
+          <span style={{ fontSize: 9, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1 }}>
+            {count === 1 ? 'brick' : 'bricks'}
+          </span>
+        </div>
+      </Html>
     </group>
   );
 }
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
+// brick-centre world points for the BT: [x, y] along +Y from the start
+const wallPoints = (count: number): [number, number][] =>
+  Array.from({ length: count }, (_, i) => [r3(WALL_START_X), r3(WALL_START_Y + i * BRICK_LEN)]);
+// pointer ground point -> clamped brick count along the fixed +Y axis
+const countFromPoint = (pz: number) =>
+  Math.min(MAX_BRICKS, Math.max(1, Math.round(Math.max(0, SZ - pz) / BRICK_LEN)));
 
 /** Combined site view: satellite ground + live 3D robots, with a 2D/3D camera
  *  toggle, zoom (orbit), and a draw-a-line wall planner that publishes /hmi/wall. */
@@ -384,11 +423,11 @@ export function RobotTwinView() {
   const { sendWall } = useRos();
   const [mode2d, setMode2d] = useState(false);
   const [drawing, setDrawing] = useState(false);
-  const [wall, setWall] = useState<[number, number][]>([]);
+  const [count, setCount] = useState(0);          // planned wall length in bricks (0 = none)
 
-  const clearWall = () => { setWall([]); sendWall([]); };
-  // three.js z = -world y, so map back to world (x, y) for the robot/BT
-  const commitWall = () => sendWall(wall.map(([x, z]) => [r3(x), r3(-z)]));
+  const toggleDraw = () => setDrawing((d) => { const nd = !d; if (nd && count === 0) setCount(1); return nd; });
+  const clearWall = () => { setCount(0); setDrawing(false); sendWall([]); };
+  const commitWall = () => { if (count > 0) { sendWall(wallPoints(count)); setDrawing(false); } };
 
   return (
     <div className="relative h-full w-full">
@@ -411,13 +450,15 @@ export function RobotTwinView() {
         <ContactShadows position={[0, 0.006, 0]} opacity={0.45} blur={2} scale={12} far={3} />
 
         <Suspense fallback={<LoadingFallback />}><Cell /></Suspense>
-        <Wall points={wall} />
+        <WallPlan count={count} />
 
-        {/* click-catcher (only while drawing): a click adds a wall vertex; drags
-            still orbit/pan because OrbitControls listens on the canvas DOM */}
+        {/* draw catcher (only while drawing): pointer position sets the wall LENGTH
+            (brick count) along the fixed +Y axis; a click commits the plan. The
+            angle never changes — only e.point.z (the +Y distance) is used. */}
         {drawing && (
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}
-            onClick={(e) => { e.stopPropagation(); setWall((w) => [...w, [e.point.x, e.point.z]]); }}>
+            onPointerMove={(e) => { e.stopPropagation(); setCount(countFromPoint(e.point.z)); }}
+            onClick={(e) => { e.stopPropagation(); commitWall(); }}>
             <planeGeometry args={[200, 200]} />
             <meshBasicMaterial transparent opacity={0} depthWrite={false} />
           </mesh>
@@ -430,13 +471,13 @@ export function RobotTwinView() {
       {/* overlay controls */}
       <div className="absolute right-3 top-3 z-10 flex gap-1.5">
         <button onClick={() => setMode2d((v) => !v)} className="btn px-3 py-1.5 text-[11px]">{mode2d ? '◆ 3D' : '◰ 2D'}</button>
-        <button onClick={() => setDrawing((v) => !v)} className={`btn px-3 py-1.5 text-[11px] ${drawing ? 'btn-primary' : ''}`}>✎ Wall</button>
-        <button onClick={commitWall} disabled={wall.length < 2} className="btn px-3 py-1.5 text-[11px] disabled:opacity-30">✓ Plan</button>
-        <button onClick={clearWall} disabled={!wall.length} className="btn btn-danger px-2 py-1.5 text-[11px] disabled:opacity-30">✕</button>
+        <button onClick={toggleDraw} className={`btn px-3 py-1.5 text-[11px] ${drawing ? 'btn-primary' : ''}`}>✎ Wall</button>
+        <button onClick={commitWall} disabled={count < 1} className="btn px-3 py-1.5 text-[11px] disabled:opacity-30">✓ Plan</button>
+        <button onClick={clearWall} disabled={!count} className="btn btn-danger px-2 py-1.5 text-[11px] disabled:opacity-30">✕</button>
       </div>
       {drawing && (
         <div className="absolute bottom-3 left-3 z-10 rounded-sm bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wider text-accent">
-          click ground to add wall points · {wall.length} set
+          move along the line to set length · {count}/{MAX_BRICKS} bricks · click to place
         </div>
       )}
     </div>

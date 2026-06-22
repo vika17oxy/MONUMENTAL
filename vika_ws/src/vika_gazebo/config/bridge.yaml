@@ -10,10 +10,10 @@
 # rail. The carriage is driven through ros2_control (rail_controller), not gz
 # cmd_vel, so the cmd_vel bridges were removed.
 
-# Vacuum gripper attach/detach (gz DetachableJoint trigger topics). ONE joint for
-# the single dynamic pick-ROW row_0_0 (3 fused bricks). Empty msg attaches/detaches
-# the whole row. The wall grows as STATIC bricks (lay_course.sh), so only this one
-# dynamic row exists. ROS -> GZ.
+# Vacuum gripper attach/detach (gz DetachableJoint trigger topics). ONE joint per
+# dynamic pick-ROW r{si}_0 (3 rows = flat 3x3 pallet supply, 3 fused bricks each).
+# Empty msg attaches/detaches the whole row. The wall grows as STATIC bricks
+# (lay_course.sh) and the used row respawns to its pallet slot. ROS -> GZ.
 - ros_topic_name: "/suction/r0_0/attach"
   gz_topic_name: "/suction/r0_0/attach"
   ros_type_name: "std_msgs/msg/Empty"

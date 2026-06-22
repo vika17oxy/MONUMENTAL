@@ -61,6 +61,7 @@ class HmiBridge(Node):
         self.lock = threading.Lock()
         self.active = "robot_a"
         self.js = {r: {} for r in ROBOTS}                 # per-robot joint map
+        self.rail_target = {}                             # per-robot accumulated rail goal (jog)
         self.ik_busy = False                              # drop overlapping IK goals
         self.ik_busy_t = 0.0                               # when ik_busy was set (stuck-guard)
         # Cartesian IK per robot — each has its own move_group: robot_a global
@@ -160,16 +161,28 @@ class HmiBridge(Node):
         self.send_traj(self.active, list(msg.data), sec=1)
 
     def on_rail_jog(self, msg):
+        # Jog the rail by a delta. The gamepad fires this ~12 Hz while LB/RB is held,
+        # so we ACCUMULATE into a persistent target (reading the live joint each tick
+        # made every goal target the same spot when the cache lagged -> rail "hung").
+        # The duration honours the 0.8 m/s rail velocity limit so big steps aren't
+        # rejected; a moving target = smooth continuous travel under preemption.
         r = self.active
-        cur = self.js[r].get(f"{r}_rail_joint", 0.0)
-        target = max(-8.0, min(8.0, cur + float(msg.data)))   # rail travel (per-robot URDF limit enforces direction)
-        self._send(self.rail[r], [f"{r}_rail_joint"], [target], sec=1, what=f"{r} rail")
+        actual = self.js[r].get(f"{r}_rail_joint", 0.0)
+        base = self.rail_target.get(r)
+        if base is None or abs(base - actual) > 0.5:     # (re)sync to reality
+            base = actual
+        target = max(-8.0, min(8.0, base + float(msg.data)))
+        self.rail_target[r] = target
+        sec = max(0.25, abs(target - actual) / 0.6)      # 0.6 m/s w/ margin under the 0.8 limit
+        self._send(self.rail[r], [f"{r}_rail_joint"], [target],
+                   sec=int(sec), nsec=int((sec % 1) * 1e9), what=f"{r} rail")
 
     def on_rail_to(self, msg):
         """Drive the rail carriage to an ABSOLUTE position (mobile masonry: the BT
         slides to the pallet to pick, then out along +Y to lay each segment)."""
         r = self.active
         target = max(-8.0, min(8.0, float(msg.data)))
+        self.rail_target[r] = target                     # keep jog accumulator in sync
         self._send(self.rail[r], [f"{r}_rail_joint"], [target], sec=4, what=f"{r} rail->{target:.2f}")
 
     def _attach_row(self, row):

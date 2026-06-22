@@ -101,10 +101,10 @@
          NOTE: the suction-pad links are lumped into ${prefix}tool0 by URDF->SDF
          fixed-joint reduction, so the surviving parent link is tool0. The brick
          attaches at its current relative pose, so it stays under its pad. -->
-    <!-- ONE DetachableJoint for the single dynamic pick-ROW (3 fused bricks, model
-         row_0_0). The gripper grabs the whole row; after laying a course as STATIC
-         wall bricks the row is teleported back to the pallet (respawn build). The
-         flat single row never topples (unlike the old 3x4 pallet stack). -->
+    <!-- ONE DetachableJoint per dynamic pick-ROW. The pallet holds a flat 3x3 layer
+         of 3 rows (row_0_0/1_0/2_0, 3 fused bricks each). The gripper grabs a whole
+         row; after laying it as a wall SEGMENT (static bricks) the row is respawned
+         to its pallet slot. Flat single layer never topples (old 3x4 stack did). -->
     <gazebo>
       <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
         <parent_link>${prefix}tool0</parent_link>

@@ -63,17 +63,17 @@ export function GamepadControl() {
   if (api.inputMode !== 'gamepad') return null;
   const G = ({ c, l }: { c: string; l: string }) => (
     <span className="inline-flex items-center gap-1">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-black" style={{ background: c }}>{l}</span>
+      <span className="flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-bold text-black" style={{ background: c }}>{l}</span>
     </span>
   );
   return (
-    <div className="pointer-events-none fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-md border border-green-500/40 bg-black/75 px-3 py-1.5 text-[10px] uppercase tracking-wider text-white/70 backdrop-blur">
-      <span className="font-bold text-green-400">▣ gamepad connected</span>
-      <span className="flex items-center gap-1"><G c="#6cc24a" l="A" /> detect</span>
-      <span className="flex items-center gap-1"><G c="#e0341e" l="B" /> ready</span>
-      <span className="flex items-center gap-1"><G c="#2a7fff" l="X" /> {suckOn.current ? 'release' : 'suck'}</span>
-      <span className="flex items-center gap-1"><G c="#f5c518" l="Y" /> home</span>
-      <span className="text-white/40">· LS move · LT/RT z · LB/RB rail</span>
+    <div className="pointer-events-none fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-5 rounded-lg border border-green-500/50 bg-black/80 px-6 py-3.5 text-[14px] uppercase tracking-wider text-white/80 shadow-[0_8px_28px_rgba(0,0,0,0.6)] backdrop-blur">
+      <span className="text-[15px] font-bold text-green-400">▣ gamepad connected</span>
+      <span className="flex items-center gap-2"><G c="#6cc24a" l="A" /> detect</span>
+      <span className="flex items-center gap-2"><G c="#e0341e" l="B" /> ready</span>
+      <span className="flex items-center gap-2"><G c="#2a7fff" l="X" /> {suckOn.current ? 'release' : 'suck'}</span>
+      <span className="flex items-center gap-2"><G c="#f5c518" l="Y" /> home</span>
+      <span className="text-[13px] text-white/45">· LS move · LT/RT z · LB/RB rail</span>
     </div>
   );
 }

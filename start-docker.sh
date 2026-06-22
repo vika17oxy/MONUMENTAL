@@ -48,7 +48,9 @@ xhost + >/dev/null 2>&1 || echo "   (xhost failed — is an X server running on 
 
 # Stable mDNS name for the dashboard: http://monumental.local:5173 (no more
 # chasing the DHCP IP). avahi-publish holds the registration while it runs.
-LANIP=$(ip -4 addr 2>/dev/null | grep -oE 'inet 192\.168\.[0-9.]+' | awk '{print $2}' | head -1)
+# match any private LAN IP (192.168/10/172.16-31), skip docker's 172.17; `|| true`
+# so a no-match under `set -eo pipefail` doesn't abort the whole launch.
+LANIP=$(ip -4 addr 2>/dev/null | grep -oE 'inet (192\.168|10|172)\.[0-9.]+' | awk '{print $2}' | grep -vE '^(172\.17|127\.)' | head -1) || true
 if [ -n "$LANIP" ] && command -v avahi-publish >/dev/null 2>&1; then
   pkill -f 'avahi-publish.*monumental' 2>/dev/null || true
   nohup avahi-publish -a -R monumental.local "$LANIP" >/tmp/avahi-monumental.log 2>&1 &

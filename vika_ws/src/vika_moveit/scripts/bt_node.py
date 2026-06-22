@@ -30,28 +30,29 @@ PLACE = (-0.6, 0.72, 0.38)
 BRICK_H = 0.238           # brick height -> course k sits at z = k * BRICK_H
 BRICK_LEN = 0.375         # brick long side (along the Y wall) -> ½ = running-bond stagger
 LAY_SH = "/ws/src/vika_gazebo/scripts/lay_course.sh"
+REFILL_SH = "/ws/src/vika_gazebo/scripts/refill_pallet.sh"
 # ── mobile masonry: a long wall built from several Y segments, VIKA-6 travelling
 #    the rail between the pallet (pick) and each segment (place) ──
 WALL_X = -0.6             # the wall runs in Y at this X (VIKA-6's reach)
 WALL_Y0 = 2.0            # wall START in Y (well clear of the pallet at y=0.3)
-SEG_LEN = 3 * 0.385       # one pick = a row of 3 bricks -> contiguous segments
+SEG_GAP = 0.04            # small visible gap (wall bricks have no collision -> no snag)
+SEG_LEN = 3 * 0.385 + SEG_GAP   # segment centre spacing = row span (1.155) + gap
 RAIL_AHEAD = 0.72         # the wall sits this far ahead of the carriage (good reach)
-# ── real 3(Y)×4(Z) pallet of fused pick-ROWS row_{yi}_{zi} (12 rows, NO respawn).
-#    Each pallet COLUMN (yi) supplies one wall COURSE; its 4 LEVELS (zi, top-down)
-#    supply that course's 4 SEGMENTS. Ground-truth pick (the known stack), not DINO. ──
-NUM_Y = 3                 # pallet Y-columns  == wall courses
-NUM_LEVELS = 4            # pallet Z-levels   == wall segments
-NUM_SEGS = NUM_LEVELS     # 4 segments along Y
-NUM_COURSES = NUM_Y       # 3 courses high
-ROWY = {0: 0.04, 1: 0.3, 2: 0.56}   # the 3 längs rows along Y (ground-truth pick Y)
+# ── The pallet shows a full 3x3 supply, but only row_0_0 (first row, y=0.04) is
+#    DYNAMIC and RESPAWNS: VIKA-6 always picks IT, lays a wall SEGMENT, then it
+#    respawns to the pallet for the next pick. The other two rows are STATIC
+#    decoration. Each wall COURSE is NUM_SEGS rows LONG; courses stack NUM_COURSES
+#    high (running bond). Only one row ever moves -> reliable pick. ──
+NUM_SEGS = 3              # segments per course (wall length)
+NUM_COURSES = 3           # courses high
+PICK_Y = 0.04            # the (only) dynamic pick-row's pallet slot Y
 PALLET_X = -0.6
-# ── respawn build (stable 3-wide × 3-high wall): ONE dynamic pick-row row_0_0 on
-#    the pallet is picked, laid as a course of STATIC wall bricks, then teleported
-#    back for the next course. Nothing stacks on the pallet -> nothing topples. ──
-PICK_Y = 0.3              # pallet pick row Y (carriage slides here to grab straight down)
 PICK_Z = 0.38            # TCP target to grab a row resting at centre z=0.144 (top + standoff)
-WALL_Y = 1.3              # the 3-brick wall sits here in Y, clear of the pallet (ends at y≈0.8)
-PLACE_Z = 0.38           # TCP target for course 0; +k*BRICK_H per course
+PLACE_Z = 0.355          # TCP set-down target for course 0; +z*BRICK_H per course. The
+                         # row base comes to REST on the course below (set down, not
+                         # dropped) before it is frozen + whisked.
+PLACE_DESCEND = 0.25     # top-down place: hover this far ABOVE the target, then descend
+                         # straight down in Z only (Cartesian MoveL) to set the row.
 # ── VIKA-5 cement pass: run the nozzle along the finished wall top, laying mortar ──
 CEMENT_HOVER = 0.70       # cement_base z over the wall (nozzle tip ~0.16 below)
 CEMENT_SH = "/ws/src/vika_gazebo/scripts/lay_cement.sh"
@@ -191,82 +192,98 @@ class BtNode(RclNode):
 
     def _build(self):
         A = Action
-        scan = A("Scan pose", 7.0, on_enter=self._do_scan)
-        detect = A("Detect bricks", 8.0, on_enter=self._do_detect, done=lambda: len(self.dets) > 0)
-        found = Condition("bricks found?", lambda: len(self.dets) > 0)
-        rescan = A("Re-scan", 8.0, on_enter=self._do_detect, done=lambda: len(self.dets) > 0)
-        # Build a stable 3-wide × NUM_COURSES-high wall by laying ONE pick-row per
-        # course: pick row_0_0, place it as a course, freeze it as STATIC wall bricks
-        # and teleport the dynamic row back to the pallet for the next course. Nothing
-        # ever stacks on the pallet, so nothing topples there; the wall is static.
-        courses = [self._course(k) for k in range(NUM_COURSES)]
-        return Sequence(f"Build wall (3 wide × {NUM_COURSES} high, respawn)", [
+        # Build a LONG wall: each COURSE (z height) is NUM_SEGS rows LONG, laid
+        # end-to-end in the +Y direction (s=0 near the pallet → s=2 far out). VIKA-6
+        # always picks the single dynamic row_0_0, lays it as a STATIC wall segment,
+        # and it RESPAWNS to the pallet for the next pick. Courses stack with a ½-brick
+        # running-bond offset. bottom→top across courses.
+        items = []
+        for z in range(NUM_COURSES):
+            for s in range(NUM_SEGS):                 # +Y: near → far
+                items.append(self._seg(z, s))
+            # INTERLEAVE cement: after each course (except the top one) VIKA-6 goes to
+            # HOME and waits while VIKA-5 lays a mortar bed on this course's top; then
+            # re-activate VIKA-6 (active robot) so the next course's picks drive it.
+            if z < NUM_COURSES - 1:
+                items.append(self._course_cement(z))
+                items.append(A("VIKA-6 active again", 3.0,
+                               on_enter=lambda: self.p_active.publish(String(data="robot_a"))))
+        return Sequence(f"Build wall ({NUM_SEGS}×{NUM_COURSES}, +Y, respawn, cemented)", [
             # park VIKA-5 (fold) out of the way first so the two arms never tangle
             A("Park VIKA-5", 5.0, on_enter=self._park_b),
-            *courses,
+            # DINO perception PASS — purely for the UI. Lift the wrist cam high over the
+            # pallet, run Grounding DINO, and the detections (boxes) show in the HMI.
+            # The pick itself uses GROUND TRUTH (known row pose), not these detections.
+            A("Scan pallet (cam high)", 8.0, on_enter=self._do_scan),
+            A("Detect bricks (UI only)", 9.0, on_enter=self._do_detect),
+            *items,
             A("Retreat home", 5.0, on_enter=lambda: (self._slide_to(0.0),
                                                      self.p_cmd.publish(String(data="READY")))),
         ])
 
-    def _course(self, k):
+    def _seg(self, z, s):
         A = Action
-        place_y = WALL_Y + (k % 2) * (BRICK_LEN / 2.0)   # running-bond ½-brick stagger
-        place_rail = WALL_Y - RAIL_AHEAD                 # carriage sits behind, arm reaches ahead
-        place_z = PLACE_Z + k * BRICK_H
-        # carry HIGH: clear the courses already laid (k of them) plus the pallet row.
-        lift = max(0.40, k * BRICK_H + 0.55)
-        return Sequence(f"Course {k + 1}/{NUM_COURSES}", [
-            # slide to the pallet pick row (straight-down grab in front of the arm)
-            A("Slide to pallet", 6.0, on_enter=lambda: self._slide_to(PICK_Y)),
-            A("Approach pick row", 6.0, on_enter=self._do_pick),
-            A("Vacuum grip", 2.5, on_enter=lambda: self.p_suck.publish(String(data="r0_0"))),
+        row = "r0_0"                                     # always the single dynamic pick-row
+        pick_y = PICK_Y
+        seg_y = WALL_Y0 + s * SEG_LEN + (z % 2) * (BRICK_LEN / 2.0)   # running-bond: odd courses ½-brick offset
+        place_rail = WALL_Y0 + s * SEG_LEN - RAIL_AHEAD              # carriage behind, arm reaches ahead
+        place_z = PLACE_Z + z * BRICK_H
+        # carry HIGH so the row clears the courses already laid (z of them).
+        lift = max(0.40, z * BRICK_H + 0.55)
+        return Sequence(f"Course {z + 1} · Seg {s + 1} ({row})", [
+            # slide to this row's pallet slot (straight-down grab in front of the arm)
+            A("Slide to pallet", 7.0, on_enter=lambda yy=pick_y: self._slide_to(yy)),
+            # LONG approach so the arm fully arrives + settles over the row before the
+            # suction fires — otherwise it grabs mid-move and the row attaches offset
+            # ("greift daneben"). The far-segment return is a big move, so be generous.
+            A("Approach pick row", 10.0, on_enter=lambda yy=pick_y, rr=row: self._do_pick(yy, rr)),
+            A("Vacuum grip", 2.5, on_enter=lambda rr=row: self.p_suck.publish(String(data=rr))),
             A("Lift row (high)", 7.0, on_enter=lambda lz=lift: self.p_jog.publish(
                 Vector3(x=0.0, y=0.0, z=lz))),
-            A("Slide to wall", 7.0, on_enter=lambda r=place_rail: self._slide_to(r)),
-            A("Place course (yawed)", 8.0, on_enter=lambda y=place_y, z=place_z:
-                self._do_place(y, z)),
-            A("Lower onto course", 4.5, on_enter=lambda: self.p_jog.publish(
-                Vector3(x=0.0, y=0.0, z=-0.14))),
-            A("Release", 2.0, on_enter=lambda: self.p_suck.publish(String(data=""))),
-            A("Lift clear", 4.0, on_enter=lambda: self.p_jog.publish(Vector3(x=0.0, y=0.0, z=0.45))),
-            # freeze this course as static wall bricks + teleport row_0_0 back to pallet
-            A("Freeze course + refill", 3.5, on_enter=lambda kk=k: self._lay_seg(WALL_Y, kk)),
+            A("Slide to segment", 7.0, on_enter=lambda r=place_rail: self._slide_to(r)),
+            # TOP-DOWN PLACE: first move HIGH directly above the x/y target, then descend
+            # straight down in Z only (Cartesian MoveL) — sets the row cleanly from above
+            # instead of sweeping it in sideways (which snagged on the neighbour brick).
+            A("Hover above target", 8.0, on_enter=lambda y=seg_y, zz=place_z + PLACE_DESCEND:
+                self._do_place(y, zz)),
+            A("Set down (straight Z)", 5.0, on_enter=lambda dz=PLACE_DESCEND: self.p_jog.publish(
+                Vector3(x=0.0, y=0.0, z=-dz))),
+            # freeze the placed row as static wall bricks + whisk the dynamic row back
+            A("Freeze + respawn row", 4.0, on_enter=lambda zz=z, sy=seg_y, py=pick_y:
+                self._lay(zz, sy, "row_0_0", py)),
+            A("Lift clear (straight Z)", 4.0, on_enter=lambda: self.p_jog.publish(
+                Vector3(x=0.0, y=0.0, z=0.45))),
         ])
 
-    def _do_pick(self):
-        """Approach the single dynamic pick-row row_0_0 resting on the pallet."""
+    def _do_pick(self, pick_y, row):
+        """Approach one of the flat pallet pick-rows (row r{s}_0 at its Y slot)."""
         self.p_active.publish(String(data="robot_a"))
-        self.get_logger().info(f"pick row r0_0 at (y={PICK_Y:.2f}, z={PICK_Z:.2f})")
-        self.p_goto.publish(Point(x=float(PALLET_X), y=float(PICK_Y), z=float(PICK_Z)))
+        self.get_logger().info(f"pick {row} at (y={pick_y:.2f}, z={PICK_Z:.2f})")
+        self.p_goto.publish(Point(x=float(PALLET_X), y=float(pick_y), z=float(PICK_Z)))
 
     def _do_place(self, y, z):
-        """Place the carried row as a yawed course (bricks run along Y = the wall)."""
-        self.get_logger().info(f"place course -> ({WALL_X:.2f}, {y:.2f}, z={z:.2f}) yawed")
+        """Place the carried row as a yawed segment (bricks run along Y = the wall)."""
+        self.get_logger().info(f"place -> ({WALL_X:.2f}, {y:.2f}, z={z:.2f}) yawed")
         self.p_goto_yaw.publish(Point(x=float(WALL_X), y=float(y), z=float(z)))
+
+    def _refill_pallet(self):
+        """Respawn all 3 pick-rows onto the pallet — runs once a whole course is laid
+        (the pallet is empty by then), so new rows only appear when the pallet is empty."""
+        try:
+            subprocess.Popen(["bash", REFILL_SH])
+        except Exception as e:
+            self.get_logger().warn(f"refill failed: {e}")
+
+    def _lay(self, z, seg_y, row, pick_y):
+        """Freeze the placed segment as static wall bricks + stash the used dynamic row."""
+        try:
+            subprocess.Popen(["bash", LAY_SH, str(z), str(WALL_X), str(seg_y), row, str(pick_y)])
+        except Exception as e:
+            self.get_logger().warn(f"lay failed: {e}")
 
     def _slide_to(self, rail):
         self.p_active.publish(String(data="robot_a"))
         self.p_rail_to.publish(Float64(data=float(rail)))
-
-    def _do_pick_row(self, yi, zi):
-        """Approach pallet row (column yi, level zi) at its brick top — ground truth
-        (the known stack geometry), not the DINO centroid."""
-        self.p_active.publish(String(data="robot_a"))
-        z = BRICK_TOP + zi * BRICK_H
-        self.get_logger().info(f"pick row {yi}_{zi} at (y={ROWY[yi]:.2f}, z={z:.2f})")
-        self.p_goto.publish(Point(x=float(PALLET_X), y=float(ROWY[yi]), z=float(z)))
-
-    def _do_place_seg(self, seg_y, k):
-        y = seg_y + (k % 2) * (BRICK_LEN / 2.0)      # running-bond stagger
-        z = PLACE[2] + k * BRICK_H
-        self.get_logger().info(f"seg place -> ({WALL_X:.2f}, {y:.2f}, z={z:.2f}) yawed")
-        self.p_goto_yaw.publish(Point(x=float(WALL_X), y=float(y), z=float(z)))
-
-    def _lay_seg(self, seg_y, k):
-        try:
-            subprocess.Popen(["bash", LAY_SH, str(k), str(WALL_X), str(seg_y)])
-        except Exception as e:
-            self.get_logger().warn(f"lay_seg failed: {e}")
 
     # ── VIKA-5 cement pass ──────────────────────────────────────────────────────
     def _build_cement(self):
@@ -297,6 +314,43 @@ class BtNode(RclNode):
         self.p_active.publish(String(data="robot_b"))
         self.p_goto.publish(Point(x=float(WALL_X), y=float(y), z=CEMENT_HOVER))
 
+    def _cement_pos_z(self, y, z):
+        """Like _cement_pos but at an explicit nozzle height (for per-course cement,
+        centred over the bricks at x=WALL_X = ground truth)."""
+        self.p_active.publish(String(data="robot_b"))
+        self.p_goto.publish(Point(x=float(WALL_X), y=float(y), z=float(z)))
+
+    def _course_cement(self, z):
+        """VIKA-5 lays a mortar bed along the TOP of course z while VIKA-6 waits in its
+        HOME pose. Ground truth: the nozzle runs centred over the known wall line
+        (x=WALL_X) at the course-top height. Mirrors _build_cement but per course."""
+        A = Action
+        run_len = (NUM_SEGS - 1) * SEG_LEN
+        stagger = (z % 2) * (BRICK_LEN / 2.0)                 # match the running-bond shift
+        y0 = WALL_Y0 + stagger
+        # keep the nozzle at a comfortably REACHABLE height so VIKA-5 lands centred over
+        # the wall (x=WALL_X) instead of short/beside it; the mortar bed itself spawns at
+        # the true course-top height (ground truth) regardless of the nozzle height.
+        nozzle_z = max(CEMENT_HOVER - (NUM_COURSES - 1 - z) * BRICK_H, 0.45)
+        top_z = (z + 1) * BRICK_H                              # mortar bed sits on course z
+        steps = [
+            A("VIKA-6 to HOME (wait)", 6.0, on_enter=self._park_a),
+            A("VIKA-5 to course start", 7.0, on_enter=lambda yy=y0: self._slide_b(yy)),
+            # Position the nozzle ONCE, centred over the wall. After this the arm pose is
+            # FROZEN — every strip only slides the RAIL along Y, so no IK re-solve moves
+            # the arm joints (axis 4 stays locked) and the nozzle stays centred.
+            A("Nozzle over course (centre)", 8.0, on_enter=lambda yy=y0, nz=nozzle_z:
+                self._cement_pos_z(yy, nz)),
+        ]
+        for i in range(N_CEMENT):
+            y = y0 + i * run_len / (N_CEMENT - 1)
+            # RAIL ONLY — arm held, axis 4 does not move; nozzle translates along the wall
+            steps.append(A(f"Run to y={y:.1f}", 4.0, on_enter=lambda yy=y: self._slide_b(yy)))
+            steps.append(A("Apply cement", 2.5, on_enter=lambda yy=y, tz=top_z:
+                           self._spawn_cement(yy, tz)))
+        steps.append(A("VIKA-5 home", 5.0, on_enter=self._park_b))
+        return Sequence(f"Cement course {z + 1} (VIKA-5)", steps)
+
     def _spawn_cement(self, y, top_z):
         try:
             subprocess.Popen(["bash", CEMENT_SH, str(WALL_X), str(y), str(top_z)])
@@ -314,8 +368,10 @@ class BtNode(RclNode):
         self.p_cmd.publish(String(data="HOME"))
 
     def _do_scan(self):
+        # lift the wrist camera HIGH and centred over the pallet so Grounding DINO
+        # sees all the bricks from above (for the UI overlay; pick uses ground truth)
         self.p_active.publish(String(data="robot_a"))
-        self.p_goto.publish(Point(x=-0.6, y=0.07, z=0.78))
+        self.p_goto.publish(Point(x=-0.6, y=0.3, z=1.15))
 
     def _do_detect(self):
         self.dets = []

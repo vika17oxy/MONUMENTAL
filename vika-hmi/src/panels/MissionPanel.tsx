@@ -81,6 +81,7 @@ function emit(rows: Row[], children: TNode[], parentPrefix: string, expanded: Se
 
 export function MissionPanel() {
   const { connected, btNodes, btRunning, sendMission } = useRos();
+  const [treeOpen, setTreeOpen] = useState(false);   // BT list collapsed by default
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const toggle = (k: number) => setExpanded((prev) => {
     const s = new Set(prev);
@@ -103,6 +104,7 @@ export function MissionPanel() {
 
   const acts = btNodes.filter((n) => n.type === 'action' || n.type === 'condition');
   const done = acts.filter((n) => n.status === 'SUCCESS').length;
+  const runningName = btNodes.find((n) => n.status === 'RUNNING' && (n.type === 'action' || n.type === 'condition'))?.name;
 
   return (
     <Panel
@@ -127,14 +129,22 @@ export function MissionPanel() {
       </div>
 
       <div className="mt-3 border border-white/10 bg-black/25 p-2.5">
-        <div className="mb-2 flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-white/40">
-          <span>behavior tree</span>
+        <button onClick={() => setTreeOpen((o) => !o)}
+          className="mb-2 flex w-full items-center justify-between text-[9px] uppercase tracking-[0.2em] text-white/40 hover:text-white/60">
+          <span className="flex items-center gap-1.5"><span className="text-white/30">{treeOpen ? '▾' : '▸'}</span> behavior tree</span>
           <span className="readout readout-dim">{done} / {acts.length}</span>
-        </div>
+        </button>
         {rows.length === 0 ? (
           <div className="py-3 text-center text-[10px] uppercase tracking-wider text-white/25">
             no tree (start bt_node)
           </div>
+        ) : !treeOpen ? (
+          <button onClick={() => setTreeOpen(true)}
+            className="flex w-full items-center gap-1.5 truncate px-1 text-left text-[10px] text-white/45 hover:text-white/70">
+            {btRunning
+              ? <><span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" /><span className="truncate text-accent">{runningName ?? 'running…'}</span></>
+              : <span className="uppercase tracking-wider text-white/30">idle · tap to expand</span>}
+          </button>
         ) : (
           <div className="font-mono text-[11px] leading-[1.7]">
             {rows.map((n) => {

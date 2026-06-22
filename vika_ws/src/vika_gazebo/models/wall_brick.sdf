@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <!-- A single static masonry brick, spawned by lay_course.sh as VIKA-6 builds the
-     wall course by course (the dynamic pick bricks cycle back to the pallet). -->
+     wall course by course (the dynamic pick bricks cycle back to the pallet).
+     Collision is kept so the carried row rests on the course below (without it the
+     next row fell THROUGH the wall). Snagging is avoided instead by placing each row
+     straight DOWN from above (vertical MoveL), not by sweeping it in sideways. -->
 <sdf version="1.7">
   <model name="wall_brick">
     <static>true</static>

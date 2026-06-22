@@ -29,20 +29,23 @@ Output schema: {"robot": "robot_a"|"robot_b"|null, "action": "HOME"|"STOP"|"READ
 Meanings: HOME=move to home/stow pose, READY=ready pose, STOP=stop, BUILD=start wall build (VIKA-6), CEMENT=start cementing (VIKA-5), AUTO=full auto build+cement, SELECT=only select that robot, NONE=unclear.
 Set robot only if a specific robot is named. Reply with JSON only, no prose.`;
 
+// display label (UI) vs spoken label (Kokoro reads "Vika five", not "V-I-K-A dash 5")
 const label = (r: Robot, fallback: Robot) =>
   (r ?? fallback) === 'robot_b' ? 'VIKA-5' : 'VIKA-6';
+const spokenName = (r: Robot, fallback: Robot) =>
+  (r ?? fallback) === 'robot_b' ? 'Vika five' : 'Vika six';
 
-/** VIKA's spoken reply (German) for an executed intent. */
+/** VIKA's spoken reply (English — Kokoro sounds best in English) for an intent. */
 function reply(action: Action, who: string): string {
   switch (action) {
-    case 'HOME': return `${who} fährt in die Home-Position.`;
-    case 'READY': return `${who} geht in Bereitschaft.`;
-    case 'STOP': return `${who} gestoppt.`;
-    case 'BUILD': return `VIKA-6 beginnt die Mauer zu bauen.`;
-    case 'CEMENT': return `VIKA-5 beginnt zu zementieren.`;
-    case 'AUTO': return `Automatik gestartet. VIKA-6 baut, VIKA-5 zementiert.`;
-    case 'SELECT': return `${who} ausgewählt.`;
-    default: return 'Befehl nicht verstanden.';
+    case 'HOME': return `${who} moving to the home position.`;
+    case 'READY': return `${who} ready.`;
+    case 'STOP': return `${who} stopped.`;
+    case 'BUILD': return `Vika six starting the wall build.`;
+    case 'CEMENT': return `Vika five starting cementing.`;
+    case 'AUTO': return `Automatic mode. Vika six builds, Vika five cements.`;
+    case 'SELECT': return `${who} selected.`;
+    default: return 'Command not understood.';
   }
 }
 
@@ -132,7 +135,7 @@ export function PromptCard() {
       }
       const who = label(intent.robot, selectedRobot);
       setStatus(intent.action === 'SELECT' ? `→ ${who} gewählt ✓` : `→ ${who} · ${intent.action} ✓`);
-      say(reply(intent.action, who));
+      say(reply(intent.action, spokenName(intent.robot, selectedRobot)));
     };
     // changing the active robot publishes /hmi/active_robot via an effect, so delay
     // the command a beat to make sure the bridge has the new selection first.

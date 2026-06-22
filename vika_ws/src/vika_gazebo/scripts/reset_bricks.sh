@@ -13,8 +13,9 @@ export GZ_PARTITION=vika
 source /opt/ros/jazzy/setup.bash 2>/dev/null
 W=construction_site
 
-# Single dynamic pick-ROW row_0_0 (3 fused bricks) resting flat on the pallet at
-# (x=-0.6, y=0.3, z=0.144). The wall grows as STATIC wall_* bricks (lay_course.sh).
+# ONE dynamic pick-row row_0_0 (first row, y=0.04) is reset onto the pallet. The other
+# two rows (row_1_0/row_2_0) are STATIC decoration in the SDF and never move, so they
+# need no reset. The wall grows as STATIC wall_* bricks (lay_course.sh).
 
 # Clear any wall the multi-course build laid (static wall_* bricks), so a fresh
 # run starts on a clean slate instead of stacking on top of the old wall.
@@ -33,12 +34,12 @@ for i in 1 2 3 4; do
 done
 # Let the joint removal settle before teleporting (fixed joint overrides set_pose).
 sleep 3.0
-# Drop the row flat onto the pallet centre.
+# Drop row_0_0 flat onto its pallet slot (y=0.04).
 for i in 1 2 3; do
   gz service -s "/world/${W}/set_pose" \
     --reqtype gz.msgs.Pose --reptype gz.msgs.Boolean --timeout 4000 \
-    --req "name: \"row_0_0\", position: {x: -0.6, y: 0.3, z: 0.144}, orientation: {w: 1.0}" \
+    --req "name: \"row_0_0\", position: {x: -0.6, y: 0.04, z: 0.144}, orientation: {w: 1.0}" \
     >/dev/null 2>&1
   sleep 0.15
 done
-echo "==> pick-row reset onto pallet (row_0_0)"
+echo "==> pick-row reset onto pallet (row_0_0 @ y=0.04)"

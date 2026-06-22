@@ -12,14 +12,15 @@ function Stick({
 }: { title: string; edges: Edges; axis?: 'both' | 'vertical'; onVec: (x: number, y: number) => void }) {
   const base = useRef<HTMLDivElement>(null);
   const live = useRef(false);
+  const origin = useRef<{ x: number; y: number } | null>(null);   // touch-down point = neutral centre
   const [knob, setKnob] = useState({ x: 0, y: 0 });
 
+  // Natural touch feel: wherever you press becomes the centre; the knob & vector
+  // follow your RELATIVE drag from that point (not the absolute press location).
   const handle = (e: React.PointerEvent) => {
-    const el = base.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    let dx = e.clientX - (r.left + r.width / 2);
-    let dy = e.clientY - (r.top + r.height / 2);
+    if (!origin.current) return;
+    let dx = e.clientX - origin.current.x;
+    let dy = e.clientY - origin.current.y;
     if (axis === 'vertical') dx = 0;
     const d = Math.hypot(dx, dy);
     if (d > R) { dx = (dx / d) * R; dy = (dy / d) * R; }
@@ -29,10 +30,12 @@ function Stick({
   const start = (e: React.PointerEvent) => {
     live.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
-    handle(e);
+    origin.current = { x: e.clientX, y: e.clientY };   // press point is the new centre
+    setKnob({ x: 0, y: 0 });
+    onVec(0, 0);
   };
   const move = (e: React.PointerEvent) => { if (live.current) handle(e); };
-  const end = () => { live.current = false; setKnob({ x: 0, y: 0 }); onVec(0, 0); };
+  const end = () => { live.current = false; origin.current = null; setKnob({ x: 0, y: 0 }); onVec(0, 0); };
 
   const tag = 'pointer-events-none absolute text-[9px] font-bold uppercase tracking-wider text-accent/70';
   return (
@@ -71,11 +74,10 @@ function Stick({
  *  Left = X/Y ground plane, Right = Z up/down. Push further → move faster.
  *  Mounted inside the scene view so it never covers the control panels. */
 export function TouchJoysticks() {
-  const { connected, selectedRobot, sendTcpJog, inputMode } = useRos();
+  const { sendTcpJog } = useRos();
   const left = useRef({ x: 0, y: 0 });
   const right = useRef({ x: 0, y: 0 });
   const timer = useRef<number | null>(null);
-  const ik = selectedRobot === 'robot_a' || selectedRobot === 'robot_b';  // both have IK
 
   const STEP = 0.07; // metres per tick at full deflection (faster)
   const tick = () => {
@@ -91,8 +93,7 @@ export function TouchJoysticks() {
   };
   useEffect(() => () => { if (timer.current !== null) clearInterval(timer.current); }, []);
 
-  if (!connected || !ik || inputMode !== 'touch') return null;
-  // DJI-style sticks pinned to the very bottom corners of the SCREEN (viewport-fixed),
+  // Always visible — pinned to the very bottom corners of the SCREEN (viewport-fixed),
   // easy to reach with both thumbs on an iPad. No bar / no wasted space between them.
   return (
     <>

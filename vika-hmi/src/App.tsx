@@ -31,9 +31,6 @@ export default function App() {
 
           <nav className="flex items-center gap-1 text-[11px] uppercase tracking-[0.18em]">
             <span className="px-3 py-1.5 border border-white/30 text-white bg-white/5">Operate</span>
-            <span className="px-3 py-1.5 text-white/45 hover:text-white cursor-pointer">Program</span>
-            <span className="px-3 py-1.5 text-white/45 hover:text-white cursor-pointer">Calibrate</span>
-            <span className="px-3 py-1.5 text-white/45 hover:text-white cursor-pointer">Logs</span>
           </nav>
 
           <div className="mx-4 h-5 w-px bg-white/15" />
@@ -71,7 +68,7 @@ export default function App() {
 
         {/* === LEFT COLUMN: operator controls + wrist cam === */}
         {/* end the scroll area above the corner touch joysticks (no overlap) */}
-        <aside className="flex flex-col gap-3 overflow-y-auto pr-1">
+        <aside className="flex flex-col gap-3 overflow-y-auto pr-1 pb-72">
           <ControlPanel />
           <WristView />
         </aside>
@@ -89,13 +86,12 @@ export default function App() {
           <div className="absolute inset-0">
             {view === 'site' ? <RobotTwinView /> : <BehaviorTreeView />}
           </div>
-          {/* DJI-style joysticks float in the scene's bottom corners (over the 3D view
-              only, never the side panels) so the scene gets the full height. */}
-          {view === 'site' && <TouchJoysticks />}
+          {/* DJI-style joysticks float in the screen's bottom corners — always visible. */}
+          <TouchJoysticks />
         </main>
 
         {/* === RIGHT COLUMN: behavior tree === */}
-        <aside className="flex flex-col gap-3 overflow-y-auto pr-1">
+        <aside className="flex flex-col gap-3 overflow-y-auto pr-1 pb-72">
           <MissionPanel />
           <PromptCard />
         </aside>

@@ -98,16 +98,32 @@
     <!-- them cleanly onto the pallet after the arm settles. -->
     <!-- ============================================================ -->
 
-    <!-- ONE dynamic pick-row (3 fused bricks) resting on the pallet. VIKA-6 picks
-         it, lays a course as STATIC wall bricks (lay_course.sh), then the row is
-         teleported back here for the next course. Single flat row = nothing to
-         topple (the old 3x4 stack tipped over). -->
+    <!-- The pallet shows a full 3x3 supply (3 rows), but ONLY row_0_0 (the first row,
+         y=0.04) is DYNAMIC: VIKA-6 always picks IT, lays a wall SEGMENT of STATIC
+         bricks, then lay_course.sh RESPAWNS row_0_0 here for the next pick. The other
+         two rows (y=0.30 / 0.56) are STATIC decoration — never picked, never move, so
+         no flakiness (the 3-dynamic-rows respawn was unreliable). -->
     <model name="row_0_0">
-      <pose>-0.6 0.3 0.144 0 0 0</pose>
+      <pose>-0.6 0.04 0.144 0 0 0</pose>
       <link name="row">
         <inertial><pose>0 0 0.119 0 0 0</pose><mass>6.0</mass>
           <inertia><ixx>0.06</ixx><iyy>0.7</iyy><izz>0.7</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
         <collision name="c"><pose>0 0 0.119 0 0 0</pose><geometry><box><size>1.155 0.25 0.238</size></box></geometry></collision>
+        <visual name="b0.385"><pose>0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b0.0"><pose>0.0 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b-0.385"><pose>-0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- STATIC decoration rows (never picked) so the pallet looks full. -->
+    <model name="row_1_0">
+      <static>true</static>
+      <pose>-0.6 0.3 0.144 0 0 0</pose>
+      <link name="row">
+        <visual name="b0.385"><pose>0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b0.0"><pose>0.0 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b-0.385"><pose>-0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="row_2_0">
+      <static>true</static>
+      <pose>-0.6 0.56 0.144 0 0 0</pose>
+      <link name="row">
         <visual name="b0.385"><pose>0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b0.0"><pose>0.0 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual><visual name="b-0.385"><pose>-0.385 0 0 0 0 0</pose><geometry><mesh><uri>file:///ws/src/vika_description/meshes/arm/ROD-STL/brick.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry><material><ambient>0.55 0.12 0.08 1</ambient><diffuse>0.88 0.20 0.12 1</diffuse></material></visual>
       </link>
     </model>

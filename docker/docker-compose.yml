@@ -47,7 +47,11 @@ services:
       - /dev/dri:/dev/dri
     stdin_open: true
     tty: true
-    command: bash
+    # PID 1 must NOT be an interactive bash: detached it can hit EOF on stdin and
+    # exit (taking down every node started via `docker exec -d`). A plain sleep
+    # keeps the container alive; all nodes are launched into it via docker exec.
+    restart: unless-stopped
+    command: ["sleep", "infinity"]
 
   hmi:
     build:
@@ -68,3 +72,4 @@ services:
       - "5173:5173"
     stdin_open: true
     tty: true
+    restart: unless-stopped
